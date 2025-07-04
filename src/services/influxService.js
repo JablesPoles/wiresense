@@ -11,10 +11,9 @@ const bucket = import.meta.env.VITE_INFLUX_BUCKET;
 const queryApi = new InfluxDB({ url, token }).getQueryApi(org);
 
 export function getLatestCurrent() {
-  // Envolvemos toda a lógica em uma Promise
   return new Promise((resolve, reject) => {
     const fluxQuery = `
-      from(bucket: "${bucket}")
+      from(bucket: "SCT013")
         |> range(start: -10m)
         |> filter(fn: (r) => r._measurement == "current")
         |> filter(fn: (r) => r.Monitor == "A")
@@ -23,28 +22,23 @@ export function getLatestCurrent() {
     `;
 
     const data = [];
-
     queryApi.queryRows(fluxQuery, {
       next(row, tableMeta) {
         data.push(tableMeta.toObject(row));
       },
       error(error) {
-        console.error("Erro ao executar a query", error);
-        reject(error); // Rejeita a promise se houver um erro
+        reject(error);
       },
       complete() {
-        console.log("Busca de dados concluída.");
-        // Resolve a promise com o valor quando a busca terminar
         if (data.length > 0) {
-          resolve(data[0]._value);
+          resolve(data[0]);
         } else {
-          resolve(null); // Resolve com null se nenhum dado for encontrado
+          resolve(null);
         }
       },
     });
   });
 }
-
 export function getHourlyAverage() {
   return new Promise((resolve, reject) => {
     // A tarefa horária salva os dados no bucket de longo prazo, na measurement 'current'

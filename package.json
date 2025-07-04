@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@influxdata/influxdb-client": "^1.35.0",
+    "apexcharts": "^4.7.0",
     "prop-types": "^15.8.1",
     "react": "^19.1.0",
+    "react-apexcharts": "^1.7.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { DataCard } from './components/DataCard';
+import { RealtimeChart } from './components/RealtimeChart';
 import { getLatestCurrent, getHourlyAverage, getDailyAverage, getMonthlyAverage } from './services/influxService';
 
 function App() {
@@ -69,6 +70,9 @@ function App() {
           value={monthlyAvg ?? '...'}
           unit="A"
         />
+      </div>
+      <div>
+        <RealtimeChart />
       </div>
     </div>
   );
