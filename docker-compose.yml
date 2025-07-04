@@ -1,0 +1,37 @@
+services:
+  # Serviço 1: O Banco de Dados InfluxDB
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb_servidor
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=Energy Monitor
+      - DOCKER_INFLUXDB_INIT_BUCKET=SCT013
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=H13syo_AucuasoflSFlejQipTWnHXusBUwkywuuI6oyOHjxe5niwVx-HX3WsQPCBzoym8lUFTMf0tixvXMKidQ==
+
+  frontend:
+    container_name: react_pwa_app
+    restart: unless-stopped
+    build:
+      context: .
+      args:
+        VITE_INFLUX_URL: ${VITE_INFLUX_URL}
+        VITE_INFLUX_TOKEN: ${VITE_INFLUX_TOKEN}
+        VITE_INFLUX_ORG: ${VITE_INFLUX_ORG}
+        VITE_INFLUX_BUCKET: ${VITE_INFLUX_BUCKET}
+    env_file:
+      - .env
+    ports:
+      - "80:80" 
+    depends_on:
+      - influxdb
+
+volumes:
+  influxdb_data:

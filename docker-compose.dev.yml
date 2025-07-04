@@ -1,0 +1,34 @@
+services:
+  # O serviço do InfluxDB continua exatamente o mesmo
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb_servidor_dev
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data_dev:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=Energy Monitor
+      - DOCKER_INFLUXDB_INIT_BUCKET=SCT013
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=H13syo_AucuasoflSFlejQipTWnHXusBUwkywuuI6oyOHjxe5niwVx-HX3WsQPCBzoym8lUFTMf0tixvXMKidQ==
+
+  frontend-dev:
+    image: node:22-alpine
+    container_name: react_pwa_dev
+    command: sh -c "npm install && npm run dev -- --host"
+    ports:
+      - "5173:5173"
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - influxdb
+
+volumes:
+  influxdb_data_dev:
