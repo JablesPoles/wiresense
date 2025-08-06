@@ -1,5 +1,4 @@
-// Crie o arquivo: src/components/DataCard.jsx
-import PropTypes from 'prop-types'; // 1. Importe a biblioteca
+import PropTypes from 'prop-types';
 
 export function DataCard({ title, value, unit }) {
   return (

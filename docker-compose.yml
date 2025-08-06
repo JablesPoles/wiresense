@@ -14,7 +14,7 @@ services:
       - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
       - DOCKER_INFLUXDB_INIT_ORG=Energy Monitor
       - DOCKER_INFLUXDB_INIT_BUCKET=SCT013
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=H13syo_AucuasoflSFlejQipTWnHXusBUwkywuuI6oyOHjxe5niwVx-HX3WsQPCBzoym8lUFTMf0tixvXMKidQ==
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=NfJNCNKBdcyO9Fflq892ZicVuAO9xy7uNiRIrlhF1kDYplEjKO15boQ6QaLZ6FRga5VKyIbk1o9SwQAvsEYkqA==
 
   frontend:
     container_name: react_pwa_app

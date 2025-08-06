@@ -1,112 +1,149 @@
-// src/services/influxService.js
+import { InfluxDB, Point } from "@influxdata/influxdb-client";
 
-import { InfluxDB } from "@influxdata/influxdb-client";
-
-// ... (suas variáveis de ambiente)
 const url = import.meta.env.VITE_INFLUX_URL;
 const token = import.meta.env.VITE_INFLUX_TOKEN;
 const org = import.meta.env.VITE_INFLUX_ORG;
 const bucket = import.meta.env.VITE_INFLUX_BUCKET;
 
 const queryApi = new InfluxDB({ url, token }).getQueryApi(org);
+const writeApi = new InfluxDB({ url, token }).getWriteApi(org, bucket);
+
+export function setVoltagePreference(voltage) {
+  const voltagePoint = new Point("config").floatField("voltage", voltage);
+  writeApi.writePoint(voltagePoint);
+  return writeApi.flush();
+}
 
 export function getLatestCurrent() {
   return new Promise((resolve, reject) => {
     const fluxQuery = `
-      from(bucket: "SCT013")
-        |> range(start: -10m)
-        |> filter(fn: (r) => r._measurement == "current")
-        |> filter(fn: (r) => r.Monitor == "A")
-        |> filter(fn: (r) => r._field == "current")
+      from(bucket: "${bucket}")
+        |> range(start: -1m)
+        |> filter(fn: (r) => r._measurement == "current" and r.Monitor == "A" and r._field == "current")
         |> last()
     `;
-
-    const data = [];
+    let data = null;
     queryApi.queryRows(fluxQuery, {
       next(row, tableMeta) {
-        data.push(tableMeta.toObject(row));
+        data = tableMeta.toObject(row);
       },
       error(error) {
         reject(error);
       },
       complete() {
-        if (data.length > 0) {
-          resolve(data[0]);
-        } else {
-          resolve(null);
-        }
-      },
-    });
-  });
-}
-export function getHourlyAverage() {
-  return new Promise((resolve, reject) => {
-    // A tarefa horária salva os dados no bucket de longo prazo, na measurement 'current'
-    const fluxQuery = `
-      from(bucket: "SCT013_longterm")
-        |> range(start: -24h) // Buscamos em um range maior para garantir que pegamos o último ponto
-        |> filter(fn: (r) => r._measurement == "current") // A tarefa horária salva aqui
-        |> last()
-    `;
-    const data = [];
-    queryApi.queryRows(fluxQuery, {
-      next(row, tableMeta) {
-        data.push(tableMeta.toObject(row));
-      },
-      error(error) {
-        reject(error);
-      },
-      complete() {
-        console.log("Busca da média horária concluída.");
-        resolve(data[0]._value);
+        resolve(data);
       },
     });
   });
 }
 
-export function getDailyAverage() {
+// CORREÇÃO: Busca os pontos diários individuais, sem agregar
+export function getDailyEnergyHistory() {
   return new Promise((resolve, reject) => {
     const fluxQuery = `
       from(bucket: "SCT013_longterm")
-        |> range(start: -30d) // Buscamos em um range maior para garantir que pegamos o último ponto
-        |> filter(fn: (r) => r._measurement == "current_diaria")
-        |> last()
+        |> range(start: -7d)
+        |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
+        |> sort(columns: ["_time"])
+        |> map(fn: (r) => ({ x: r._time, y: r._value }))
     `;
-    const data = [];
+    const result = [];
     queryApi.queryRows(fluxQuery, {
       next(row, tableMeta) {
-        data.push(tableMeta.toObject(row));
+        result.push(tableMeta.toObject(row));
       },
       error(error) {
         reject(error);
       },
       complete() {
-        console.log("Busca da média diária concluída.");
-        resolve(data.length > 0 ? data[0]._value : null);
+        resolve(result);
       },
     });
   });
 }
 
-export function getMonthlyAverage() {
+// CORREÇÃO: Agrega os pontos diários por mês
+export function getMonthlyEnergyHistory() {
   return new Promise((resolve, reject) => {
     const fluxQuery = `
+      import "timezone"
+      option location = timezone.location(name: "America/Sao_Paulo")
+
       from(bucket: "SCT013_longterm")
-        |> range(start: -12mo) // Buscamos em um range bem grande
-        |> filter(fn: (r) => r._measurement == "current_mensal")
-        |> last()
+        |> range(start: -6mo)
+        |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
+        |> aggregateWindow(every: 1mo, fn: sum, createEmpty: false)
+        |> map(fn: (r) => ({ x: r._time, y: r._value }))
     `;
-    const data = [];
+    const result = [];
     queryApi.queryRows(fluxQuery, {
       next(row, tableMeta) {
-        data.push(tableMeta.toObject(row));
+        result.push(tableMeta.toObject(row));
       },
       error(error) {
         reject(error);
       },
       complete() {
-        console.log("Busca da média mensal concluída.");
-        resolve(data.length > 0 ? data[0]._value : null);
+        resolve(result);
+      },
+    });
+  });
+}
+
+// Busca o consumo total do DIA ATUAL (para o DataCard)
+export function getTodaysEnergy() {
+  return new Promise((resolve, reject) => {
+    const fluxQuery = `
+      import "timezone"
+      option location = timezone.location(name: "America/Sao_Paulo")
+
+      from(bucket: "SCT013_longterm")
+        |> range(start: today())
+        |> filter(fn: (r) => r._measurement == "energia_intervalo" and r._field == "kwh_consumido")
+        |> sum()
+        |> last()
+    `;
+    let result = null;
+    queryApi.queryRows(fluxQuery, {
+      next(row, tableMeta) {
+        result = tableMeta.toObject(row);
+      },
+      error(error) {
+        reject(error);
+      },
+      complete() {
+        resolve(result);
+      },
+    });
+  });
+}
+
+// Busca o consumo total do MÊS ATUAL (para o DataCard)
+export function getMonthlyEnergy() {
+  return new Promise((resolve, reject) => {
+    const fluxQuery = `
+      import "timezone"
+      import "date"
+      option location = timezone.location(name: "America/Sao_Paulo")
+
+      month_start = date.truncate(t: now(), unit: 1mo)
+
+      from(bucket: "SCT013_longterm")
+        |> range(start: month_start)
+        |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
+        |> sum()
+        |> last()
+    `;
+    let result = null;
+    queryApi.queryRows(fluxQuery, {
+      next(row, tableMeta) {
+        result = tableMeta.toObject(row);
+      },
+      error(error) {
+        reject(error);
+      },
+      complete() {
+        resolve(result);
       },
     });
   });
