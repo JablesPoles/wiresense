@@ -15,7 +15,6 @@ export function HistoricalBarChart({ title, unit, data, dateFormat = 'day-month'
       title: { text: unit, style: { color: '#A0AEC0' }},
       labels: {
         style: { colors: '#A0AEC0' },
-        // CORREÇÃO: Adicionado o formatador para limitar as casas decimais no eixo Y.
         formatter: (val) => val.toFixed(2),
       }
     },
