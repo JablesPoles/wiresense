@@ -1,12 +1,17 @@
+// vite.config.js
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
-import tailwindcss from "@tailwindcss/postcss";
+import path from "path";
+
+// REMOVEMOS a importação do '@tailwindcss/postcss'
+// REMOVEMOS o bloco 'css: { postcss: ... }'
 
 export default defineConfig({
-  css: {
-    postcss: {
-      plugins: [tailwindcss()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   plugins: [

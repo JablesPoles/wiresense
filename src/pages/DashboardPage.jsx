@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DataCard } from '../components/DataCard';
-import { VoltageSelector } from '../components/VoltageSelector';
+import { VoltageSelector } from '../components/layout/VoltageSelector';
 // Importar os componentes de gráficos
 import { CurrentRealtimeChart } from '../components/charts/CurrentRealtimeChart';
 import { RealtimePowerChart } from '../components/charts/RealtimePowerChart';

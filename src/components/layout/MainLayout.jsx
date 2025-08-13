@@ -1,17 +1,25 @@
-import Sidebar from './Sidebar';
-import Header from './Header';
-import PageContent from './PageContent';
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import {
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 
 const MainLayout = ({ children }) => {
   return (
-    <div className="flex h-screen bg-gray-900">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-        <Header />
-        <PageContent>
-          {children}
-        </PageContent>
-      </div>
+    <div className="[--header-height:calc(theme(spacing.14))]">
+      <SidebarProvider className="flex h-screen flex-col">
+        <SiteHeader />
+
+        <div className="flex flex-1 overflow-hidden">
+          <AppSidebar />
+          <SidebarInset>
+            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+              {children}
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
     </div>
   );
 };
