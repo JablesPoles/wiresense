@@ -5,9 +5,6 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
-// REMOVEMOS a importação do '@tailwindcss/postcss'
-// REMOVEMOS o bloco 'css: { postcss: ... }'
-
 export default defineConfig({
   resolve: {
     alias: {
@@ -23,6 +20,7 @@ export default defineConfig({
       },
     }),
   ],
+  base: '/wiresense/',
   server: {
     proxy: {
       "/api/influx": {
