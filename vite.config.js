@@ -18,9 +18,33 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
       },
+      manifest: {
+        name: "Energy Monitor Dashboard",
+        short_name: "EnergyDash",
+        description:
+          "Dashboard para monitoramento de consumo de energia em tempo real.",
+        theme_color: "#111827",
+        background_color: "#111827",
+        display: "standalone",
+        scope: "/", 
+        start_url: "/", 
+        id: "/",
+        icons: [
+          {
+            src: "/icon-192x192.png", 
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+        ],
+      },
     }),
   ],
-  base: '/wiresense/',
+  base: "/wiresense/",
   server: {
     proxy: {
       "/api/influx": {
