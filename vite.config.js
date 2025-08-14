@@ -20,14 +20,14 @@ export default defineConfig({
       },
       manifest: {
         name: "Energy Monitor Dashboard",
-        short_name: "EnergyDash",
+        short_name: "Wiresense",
         description:
           "Dashboard para monitoramento de consumo de energia em tempo real.",
         theme_color: "#111827",
         background_color: "#111827",
         display: "standalone",
         scope: "/", 
-        start_url: "/", 
+        start_url: "/wiresense", 
         id: "/",
         icons: [
           {
