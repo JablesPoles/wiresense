@@ -58,7 +58,7 @@ const data = {
           url: "#",
         },
         {
-          title: "Tutoriais",
+          title: "Tutorial",
           url: "#",
         },
       ],
@@ -83,9 +83,7 @@ const data = {
   ],
 }
 
-export function AppSidebar({
-  ...props
-}) {
+export function AppSidebar({...props}) {
   return (
     <Sidebar
       className="top-[--header-height] !h-[calc(100svh-var(--header-height))]"

@@ -37,7 +37,6 @@ export function getLatestCurrent() {
   });
 }
 
-// CORREÇÃO: Busca os pontos diários individuais, sem agregar
 export function getDailyEnergyHistory() {
   return new Promise((resolve, reject) => {
     const fluxQuery = `
@@ -62,7 +61,6 @@ export function getDailyEnergyHistory() {
   });
 }
 
-// CORREÇÃO: Agrega os pontos diários por mês
 export function getMonthlyEnergyHistory() {
   return new Promise((resolve, reject) => {
     const fluxQuery = `
@@ -90,7 +88,6 @@ export function getMonthlyEnergyHistory() {
   });
 }
 
-// Busca o consumo total do DIA ATUAL (para o DataCard)
 export function getTodaysEnergy() {
   return new Promise((resolve, reject) => {
     const fluxQuery = `
@@ -118,7 +115,6 @@ export function getTodaysEnergy() {
   });
 }
 
-// Busca o consumo total do MÊS ATUAL (para o DataCard)
 export function getMonthlyEnergy() {
   return new Promise((resolve, reject) => {
     const fluxQuery = `

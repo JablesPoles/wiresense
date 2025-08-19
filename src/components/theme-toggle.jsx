@@ -1,5 +1,3 @@
-// src/components/theme-toggle.jsx
-
 import { Moon, Sun } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -9,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useTheme } from "./theme-provider" // Importe o hook do nosso provedor
+import { useTheme } from "./theme-provider" 
 
 export function ThemeToggle() {
   const { setTheme } = useTheme()

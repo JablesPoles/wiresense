@@ -24,17 +24,15 @@ export function HistoricalBarChart({ title, unit, data, dateFormat = 'day-month'
   });
 
   useEffect(() => {
-    // Helper para formatar as datas de forma consistente para comparação
     const getFormattedDate = (date) => date.toISOString().split('T')[0];
-    const getFormattedMonth = (date) => date.toISOString().slice(0, 7); // YYYY-MM
+    const getFormattedMonth = (date) => date.toISOString().slice(0, 7); 
 
-    // 1. Gerar o intervalo de datas completo
     const dateRange = [];
     const today = new Date();
     for (let i = limit - 1; i >= 0; i--) {
       const date = new Date();
       if (dateFormat === 'month') {
-        date.setUTCMonth(today.getUTCMonth() - i, 1); // Define para o dia 1 do mês
+        date.setUTCMonth(today.getUTCMonth() - i, 1); 
         dateRange.push({
           key: getFormattedMonth(date),
           label: date.toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' })
@@ -48,7 +46,6 @@ export function HistoricalBarChart({ title, unit, data, dateFormat = 'day-month'
       }
     }
 
-    // 2. Mapear os dados recebidos para um lookup rápido
     const dataMap = new Map();
     if (data) {
       data.forEach(d => {

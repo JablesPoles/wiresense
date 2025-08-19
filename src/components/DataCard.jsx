@@ -11,7 +11,6 @@ export function DataCard({ title, value, unit }) {
   );
 }
 
-// 2. Defina os tipos esperados para as props
 DataCard.propTypes = {
   title: PropTypes.string.isRequired,
   value: PropTypes.oneOfType([

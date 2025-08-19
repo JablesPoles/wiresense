@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DataCard } from '../components/DataCard';
 import { VoltageSelector } from '../components/layout/VoltageSelector';
-// Importar os componentes de gráficos
 import { CurrentRealtimeChart } from '../components/charts/CurrentRealtimeChart';
 import { RealtimePowerChart } from '../components/charts/RealtimePowerChart';
 import { HistoricalBarChart } from '../components/charts/HistoricalBarChart';
@@ -15,14 +14,11 @@ import {
 } from '../services/influxService';
 
 const DashboardPage = () => {
-  // Estados para os DataCards
   const [current, setCurrent] = useState(null);
   const [voltage, setVoltage] = useState(127);
   const [powerInWatts, setPowerInWatts] = useState(null);
   const [todaysEnergy, setTodaysEnergy] = useState(null);
   const [monthlyEnergy, setMonthlyEnergy] = useState(null);
-  
-  // Estados para os dados dos gráficos
   const [dailyHistory, setDailyHistory] = useState([]);
   const [monthlyHistory, setMonthlyHistory] = useState([]);
 
@@ -31,7 +27,6 @@ const DashboardPage = () => {
     setVoltagePreference(newVoltage);
   };
 
-  // Efeito para buscar dados em tempo real
   useEffect(() => {
     const fetchRealtime = () => {
       getLatestCurrent().then(latestCurrent => {
@@ -50,14 +45,10 @@ const DashboardPage = () => {
     return () => clearInterval(realtimeInterval);
   }, [voltage]);
 
-  // Efeito para buscar dados históricos e agregados
   useEffect(() => {
     const fetchAllData = () => {
-      // Dados para os DataCards
       getTodaysEnergy().then(data => setTodaysEnergy(data?._value ?? 0));
       getMonthlyEnergy().then(data => setMonthlyEnergy(data?._value ?? 0));
-
-      // Dados para os gráficos
       getDailyEnergyHistory().then(data => setDailyHistory(data));
       getMonthlyEnergyHistory().then(data => setMonthlyHistory(data));
     };
@@ -79,8 +70,6 @@ const DashboardPage = () => {
         <DataCard title="Consumo de Hoje" value={todaysEnergy?.toFixed(2) ?? '...'} unit="kWh" />
         <DataCard title="Consumo no Mês" value={monthlyEnergy?.toFixed(2) ?? '...'} unit="kWh" />
       </div>
-
-      {/* Grelha para os gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CurrentRealtimeChart />
         <RealtimePowerChart voltage={voltage} />

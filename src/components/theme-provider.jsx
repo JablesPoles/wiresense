@@ -11,7 +11,7 @@ export function ThemeProvider({ children, defaultTheme = "system", storageKey = 
   )
 
   useEffect(() => {
-    const root = window.document.documentElement // Acessa a tag <html>
+    const root = window.document.documentElement 
 
     root.classList.remove("light", "dark")
 
@@ -43,7 +43,6 @@ export function ThemeProvider({ children, defaultTheme = "system", storageKey = 
   )
 }
 
-// Hook customizado para usar o contexto do tema mais facilmente
 export const useTheme = () => {
   const context = useContext(ThemeProviderContext)
 
