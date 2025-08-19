@@ -1,6 +1,6 @@
 {
-  "name": "Energy Monitor Dashboard",
-  "short_name": "EnergyDash",
+  "name": "WireSense",
+  "short_name": "WireSense",
   "description": "Dashboard para monitoramento de consumo de energia em tempo real.",
   "theme_color": "#111827",
   "background_color": "#111827",
@@ -12,12 +12,14 @@
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
