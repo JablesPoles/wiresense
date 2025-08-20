@@ -2,11 +2,15 @@ import * as React from "react"
 import {
   BookOpen,
   Bot,
+  ChartSpline,
   Command,
   Frame,
+  GitGraph,
+  GraduationCap,
   LifeBuoy,
   Map,
   PieChart,
+  PieChartIcon,
   Send,
   Settings2,
   SquareTerminal,
@@ -35,27 +39,19 @@ const data = {
     {
       title: "Monitoramento",
       url: "#",
-      icon: SquareTerminal,
+      icon: ChartSpline,
       isActive: true,
-      items: [
-        {
-          title: "Dashboard",
-          url: "#",
-        },
-        {
-          title: "Selecionar Dispositivo",
-          url: "#",
-        },
-      ],
     },
     {
       title: "Documentação",
       url: "#",
-      icon: BookOpen,
+      icon: GraduationCap,
       items: [
         {
-          title: "Introdução",
-          url: "#",
+          title: "Github",
+          url: "https://github.com/JablesPoles/wiresense",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
         {
           title: "Tutorial",
@@ -98,7 +94,7 @@ export function AppSidebar({...props}) {
                   <Command className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Wiresense</span>
+                  <span className="truncate font-semibold">WireSense</span>
                   <span className="truncate text-xs">Energy Monitor</span>
                 </div>
               </a>

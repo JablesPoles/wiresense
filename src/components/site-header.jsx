@@ -27,12 +27,6 @@ export function SiteHeader() {
         <Breadcrumb className="hidden sm:block">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="#">
-                Página Inicial
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
               <BreadcrumbPage>Dashboard</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
