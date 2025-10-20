@@ -11,6 +11,6 @@ output "api_gateway_invoke_url" {
 }
 
 output "endpoint_sg_id" {
-  description = "ID do Security Group dos VPC Endpoints"
+  description = "ID do Security Group dos VPC Endpoints."
   value       = aws_security_group.vpc_endpoint.id
 }
