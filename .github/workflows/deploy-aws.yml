@@ -3,7 +3,7 @@ name: Deploy to AWS
 
 on:
   push:
-    branches: ["main"]
+    branches: ["aws-deploy"]
     # Gatilho: Executar apenas se houver mudanças nas pastas 'frontend' ou 'infra'
     paths:
       - 'frontend/**'
