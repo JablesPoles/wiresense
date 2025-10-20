@@ -1,0 +1,72 @@
+# Nome do Workflow para deploy na AWS
+name: Deploy to AWS
+
+on:
+  push:
+    branches: ["main"]
+    # Gatilho: Executar apenas se houver mudanças nas pastas 'frontend' ou 'infra'
+    paths:
+      - 'frontend/**'
+      - 'infra/**'
+  workflow_dispatch:
+
+# Permissões necessárias para a autenticação OIDC da AWS
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  #####################################################
+  # JOB: DEPLOY DA INFRAESTRUTURA COMPLETA NA AWS #
+  #####################################################
+  deploy-to-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS usando OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::782329476114:role/GitHubActions-WiresenseInfra-DeployRole
+          aws-region: sa-east-1
+
+      - name: Fazer login no Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construir e enviar imagem do Frontend para ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/wiresense/frontend:latest
+          build-args: |
+            VITE_INFLUX_URL=http://influxdb.wiresense.local:8086
+            VITE_INFLUX_TOKEN=${{ secrets.VITE_INFLUX_TOKEN }}
+            VITE_INFLUX_ORG=${{ secrets.VITE_INFLUX_ORG }}
+            VITE_INFLUX_BUCKET=${{ secrets.VITE_INFLUX_BUCKET }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./infra/terraform
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -no-color
+        working-directory: ./infra/terraform
+
+      - name: Forçar atualização do serviço Frontend ECS
+        run: aws ecs update-service --cluster wiresense-cluster --service frontend-service --force-new-deployment --region sa-east-1
+
+      - name: Forçar atualização do serviço InfluxDB ECS
+        run: aws ecs update-service --cluster wiresense-cluster --service influxdb-service --force-new-deployment --region sa-east-1
