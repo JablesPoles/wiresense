@@ -44,7 +44,6 @@ export default defineConfig({
       },
     }),
   ],
-  base: "/wiresense/",
   server: {
     proxy: {
       "/api/influx": {
