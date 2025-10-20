@@ -151,7 +151,15 @@ resource "aws_ecs_task_definition" "influxdb" {
       ],
       environment = [
         { name = "DOCKER_INFLUXDB_INIT_MODE", value = "setup" }
-      ]
+      ],
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          "awslogs-group"         = "/ecs/influxdb", # Nome do grupo de logs para o InfluxDB
+          "awslogs-region"        = var.aws_region,
+          "awslogs-stream-prefix" = "influxdb"
+        }
+      }
     }
   ])
 }
@@ -210,4 +218,9 @@ resource "aws_service_discovery_service" "influxdb" {
       type = "A"
     }
   }
+}
+
+resource "aws_cloudwatch_log_group" "influxdb" {
+  name              = "/ecs/influxdb"
+  retention_in_days = 1
 }
