@@ -35,4 +35,3 @@ lambda_function/*.pyc
 .DS_Store
 Thumbs.db
 sct013-aws.ino
-
