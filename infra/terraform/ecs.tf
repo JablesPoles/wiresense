@@ -44,7 +44,7 @@ resource "aws_security_group" "influxdb" {
     protocol        = "tcp"
     from_port       = 8086
     to_port         = 8086
-    security_groups = [aws_security_group.ecs_tasks.id]
+    security_groups = [aws_security_group.ecs_tasks.id, aws_security_group.lambda.id]
   }
 
   egress {
