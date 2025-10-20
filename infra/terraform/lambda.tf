@@ -34,8 +34,8 @@ resource "aws_lambda_function" "data_ingestor" {
 # Prepara o .zip para a nova Lambda de leitura
 data "archive_file" "lambda_read_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda_read_data" # Aponta para a nova pasta da Lambda de leitura
-  output_path = "${path.module}/../lambda_read_data.zip"
+  source_dir  = "${path.module}/lambda_read_data" # Aponta para a nova pasta da Lambda de leitura
+  output_path = "${path.module}/lambda_read_data.zip"
 }
 
 resource "aws_lambda_function" "read_data" {
