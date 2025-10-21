@@ -60,12 +60,11 @@ def handler(event, context):
             "Access-Control-Allow-Methods": "OPTIONS,GET"
         }
 
-        # --- LÓGICA DE CONSULTA CORRIGIDA ---
+        # --- LÓGICA DE CONSULTA (COM CORREÇÃO FINAL NO 'HISTORY') ---
 
         if query_type == 'latest' or query_type == 'range':
-            # Mantém a lógica para tempo real, pois ela já funciona
+            # Mantém a lógica para tempo real
             time_range = '-5m' if query_type == 'latest' else query_params.get('range', '-5m')
-            agg_window = "10s" if query_type == 'range' else "1s" # Apenas para exemplo
             
             flux_query = f'''
                 from(bucket: "{bucket}")
@@ -76,7 +75,7 @@ def handler(event, context):
                 from(bucket: "{bucket}")
                   |> range(start: {time_range})
                   |> filter(fn: (r) => r["_measurement"] == "environment" and r["_field"] == "current")
-                  |> aggregateWindow(every: {agg_window}, fn: mean, createEmpty: false)
+                  |> aggregateWindow(every: 10s, fn: mean, createEmpty: false)
             '''
             raw_results = query_influx(flux_query, org)
             if query_type == 'latest':
@@ -85,14 +84,13 @@ def handler(event, context):
                 results = [{"time": r.get('_time'), "current": r.get('_value')} for r in raw_results]
 
         elif query_type == 'summary':
-            # CORREÇÃO: Busca o último valor do total diário
+            # Mantém a lógica do summary que já está funcionando
             today_query = f'''
                 from(bucket: "{longterm_bucket}")
                   |> range(start: -1d)
                   |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
                   |> last()
             '''
-            # CORREÇÃO: Soma todos os totais diários do mês atual
             month_query = f'''
                 import "date"
                 month_start = date.truncate(t: now(), unit: 1mo)
@@ -104,7 +102,6 @@ def handler(event, context):
             today_result = query_influx(today_query, org)
             month_result = query_influx(month_query, org)
             
-            # CORREÇÃO: A query do mês retorna a soma, que é o valor que queremos
             results = {
                 "today": today_result[0]['_value'] if today_result else 0,
                 "month": month_result[0]['_value'] if month_result else (today_result[0]['_value'] if today_result else 0)
@@ -114,19 +111,33 @@ def handler(event, context):
             period = query_params.get('period', 'daily')
             limit = int(query_params.get('limit', 7))
             
-            # CORREÇÃO: A query agora simplesmente busca os últimos 'N' pontos diários que a Task criou.
+            range_duration = "7d"
+            if period == 'monthly':
+                range_duration = "6mo" # Ajuste para 6 meses
+
+            # ▼▼▼ ESTA É A CONSULTA CORRIGIDA E SIMPLIFICADA ▼▼▼
+            # Ela busca os dados diários e depois agrupa para o caso mensal.
             flux_query = f'''
+                import "timezone"
+                option location = timezone.location(name: "America/Sao_Paulo")
+                
                 from(bucket: "{longterm_bucket}")
-                  |> range(start: -30d) // Busca em um período maior para garantir que encontramos os pontos
+                  |> range(start: -{range_duration})
                   |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
-                  |> sort(columns: ["_time"], desc: true) // Ordena do mais novo para o mais antigo
-                  |> limit(n: {limit}) // Pega os últimos 'N' pontos
-                  |> sort(columns: ["_time"]) // Reordena do mais antigo para o mais novo (bom para gráficos)
+                  // Agrupa por dia, pegando o último valor (o total consolidado do dia)
+                  |> aggregateWindow(every: 1d, fn: last, createEmpty: false, location: location) 
                   |> map(fn: (r) => ({{ "x": r._time, "y": r._value }}))
             '''
+            # Para o mensal, adicionamos uma agregação extra
+            if period == 'monthly':
+                flux_query += f' |> aggregateWindow(every: 1mo, fn: sum, createEmpty: false, location: location) |> map(fn: (r) => ({{ "x": r._time, "y": r._value }}))'
+
+            flux_query += f' |> sort(columns: ["x"]) |> limit(n: {limit})'
+            # ▲▲▲ FIM DA CONSULTA CORRIGIDA ▲▲▲
+
+            print(f"Executando query de histórico ({period}): {flux_query}") # Log para depuração
             raw_results = query_influx(flux_query, org)
-            # A query já formata os dados, apenas repassamos
-            results = raw_results
+            results = raw_results # A query já formata os dados
 
         else:
              return { "statusCode": 400, "headers": cors_headers, "body": json.dumps({"error": "Tipo de query inválido"}) }
