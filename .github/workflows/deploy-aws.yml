@@ -45,6 +45,7 @@ jobs:
           file: ./frontend/Dockerfile
           platforms: linux/amd64
           push: true
+          no-cache: true
           tags: ${{ steps.login-ecr.outputs.registry }}/wiresense/frontend:latest
           build-args: |
             VITE_INFLUX_URL=http://influxdb.wiresense.local:8086
