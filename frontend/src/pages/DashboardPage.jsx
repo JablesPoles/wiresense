@@ -7,12 +7,12 @@ import { RealtimePowerChart } from '../components/charts/RealtimePowerChart';
 import { HistoricalBarChart } from '../components/charts/HistoricalBarChart';
 import { 
   getLatestDataPoint, 
+  getRealtimeData,
   getEnergySummary,
   getDailyEnergyHistory,
   getMonthlyEnergyHistory
 } from '../services/apiService';
 
-// FORCANDO A EXECUCAO DO TRIGGER 2
 const DashboardPage = () => {
   const { voltage, tarifaKwh, moeda, setIsSettingsOpen } = useSettings(); 
   const [needsAttention, setNeedsAttention] = useState(false);
@@ -25,6 +25,8 @@ const DashboardPage = () => {
   const [monthlyHistory, setMonthlyHistory] = useState([]);
   const [custoHoje, setCustoHoje] = useState(null);
   const [custoMes, setCustoMes] = useState(null);
+  const [realtimeData, setRealtimeData] = useState([]); // Estado centralizado para dados de tempo real
+
   const currencySymbols = { 'BRL': 'R$', 'USD': '$', 'EUR': '€' };
   const symbol = currencySymbols[moeda] || '$';
 
@@ -40,27 +42,24 @@ const DashboardPage = () => {
     setNeedsAttention(false); 
   }
 
+  // Efeito para buscar dados de tempo real (para cards e gráficos)
   useEffect(() => {
-    const fetchCurrent = async () => {
-      const latestData = await getLatestDataPoint();
-      setCurrent(latestData ? latestData.current : 0); 
+    const fetchRealtime = async () => {
+      const latest = await getLatestDataPoint();
+      setCurrent(latest ? latest.current : 0);
+      
+      const range = await getRealtimeData('2m');
+      setRealtimeData(range);
     };
-    fetchCurrent();
-    const realtimeInterval = setInterval(fetchCurrent, 5000); 
-    return () => clearInterval(realtimeInterval);
+
+    fetchRealtime();
+    const interval = setInterval(fetchRealtime, 5000); // Intervalo mais razoável
+    return () => clearInterval(interval);
   }, []);
-
+  
+  // Efeito para buscar resumos e históricos
   useEffect(() => {
-    if (current !== null && voltage !== null) {
-      setPowerInWatts(current * voltage);
-    } else {
-      setPowerInWatts(null);
-    }
-  }, [current, voltage]);
-
-  // Busca os resumos e históricos (agora da API)
-  useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchAggregates = async () => {
       const summary = await getEnergySummary();
       setTodaysEnergy(summary?.today ?? 0);
       setMonthlyEnergy(summary?.month ?? 0);
@@ -71,11 +70,21 @@ const DashboardPage = () => {
       const monthly = await getMonthlyEnergyHistory();
       setMonthlyHistory(monthly);
     };
-    fetchAllData();
-    const intervalId = setInterval(fetchAllData, 5 * 60 * 1000);
+    fetchAggregates();
+    const intervalId = setInterval(fetchAggregates, 5 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, []);
 
+  // Efeito para calcular potência
+  useEffect(() => {
+    if (current !== null && voltage !== null) {
+      setPowerInWatts(current * voltage);
+    } else {
+      setPowerInWatts(null);
+    }
+  }, [current, voltage]);
+
+  // Efeito para calcular custos
   useEffect(() => {
     if (todaysEnergy !== null && tarifaKwh) {
       setCustoHoje((todaysEnergy * tarifaKwh).toFixed(2));
@@ -89,7 +98,6 @@ const DashboardPage = () => {
     <div className="p-4 sm:p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        
         <div className="flex items-center gap-3">
           {needsAttention && (
             <div className="flex items-center gap-2 text-yellow-400 animate-pulse">
@@ -97,7 +105,6 @@ const DashboardPage = () => {
               <span className="text-sm font-semibold hidden sm:inline">Ajuste a voltagem</span>
             </div>
           )}
-
           <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-700/50">
              <span className="text-sm font-bold text-white">{voltage}V</span>
             <button 
@@ -131,8 +138,8 @@ const DashboardPage = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CurrentRealtimeChart />
-        <RealtimePowerChart voltage={voltage} />
+        <CurrentRealtimeChart data={realtimeData} />
+        <RealtimePowerChart voltage={voltage} data={realtimeData} />
         <HistoricalBarChart 
           title="Consumo Diário (Últimos 7 Dias)" 
           unit="kWh"

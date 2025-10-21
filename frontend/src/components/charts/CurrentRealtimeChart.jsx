@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
-import { getRealtimeData } from '../../services/apiService';
+import PropTypes from 'prop-types';
 
 const MAX_DATA_POINTS = 30;
 
-// Gráfico de linhas para dados em tempo real (Corrente)
-export function CurrentRealtimeChart() {
+export function CurrentRealtimeChart({ data }) {
   const [series, setSeries] = useState([{ name: 'Corrente (A)', data: [] }]);
   const [options] = useState({
     theme: { mode: 'dark' },
@@ -19,28 +18,27 @@ export function CurrentRealtimeChart() {
     stroke: { curve: 'smooth', width: 2 },
     markers: { size: 0 },
     xaxis: { type: 'datetime', range: 30000, labels: { style: { colors: '#A0AEC0' }}},
-    yaxis: { title: { text: 'Amperes (A)', style: { color: '#A0AEC0' }}, labels: { style: { colors: '#A0AEC0' }}},
+    yaxis: { 
+      title: { text: 'Amperes (A)', style: { color: '#A0AEC0' }}, 
+      labels: { 
+        style: { colors: '#A0AEC0' },
+        formatter: (val) => val.toFixed(2) // Arredonda para 2 casas decimais
+      }
+    },
     grid: { borderColor: '#4A5568' },
     legend: { show: true }
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      // 👇 Chama a função para buscar dados em range (ex: últimos 2 minutos)
-      const dataPoints = await getRealtimeData('2m'); 
-      const formattedData = dataPoints.map(point => ({
+    if (data && data.length > 0) {
+      const formattedData = data.map(point => ({
         x: new Date(point.time).getTime(),
-        y: point.value 
+        y: point.current
       }));
 
       setSeries([{ name: 'Corrente (A)', data: formattedData.slice(-MAX_DATA_POINTS) }]);
-    };
-
-    fetchData(); 
-    const intervalId = setInterval(fetchData, 1000); 
-
-    return () => clearInterval(intervalId);
-  }, []);
+    }
+  }, [data]);
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
@@ -49,3 +47,7 @@ export function CurrentRealtimeChart() {
     </div>
   );
 }
+
+CurrentRealtimeChart.propTypes = {
+  data: PropTypes.array.isRequired
+};

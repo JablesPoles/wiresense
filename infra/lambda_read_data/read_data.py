@@ -64,7 +64,14 @@ def handler(event, context):
                   |> last()
             '''
             raw_results = query_influx(flux_query, org)
-            results = raw_results[0] if raw_results else None 
+            if raw_results:
+                latest_point = raw_results[0]
+                results = {
+                    "time": latest_point.get('_time'),
+                    "current": latest_point.get('_value')
+                }
+            else:
+                results = None
 
         elif query_type == 'range':
             time_range = query_params.get('range', '-5m') 
@@ -75,7 +82,7 @@ def handler(event, context):
                   |> aggregateWindow(every: 10s, fn: mean, createEmpty: false) // Agrega um pouco para não retornar TANTOS pontos
             '''
             raw_results = query_influx(flux_query, org)
-            results = [{"time": r.get('_time'), "value": r.get('_value')} for r in raw_results]
+            results = [{"time": r.get('_time'), "current": r.get('_value')} for r in raw_results]
 
         elif query_type == 'summary':
             today_query = f'''

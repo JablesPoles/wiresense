@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
-import { getRealtimeData } from '../../services/apiService';
+import PropTypes from 'prop-types';
 
 const MAX_DATA_POINTS = 30;
 
-// Gráfico de linhas para dados em tempo real (Potência)
-export function RealtimePowerChart({ voltage }) {
+export function RealtimePowerChart({ voltage, data }) {
   const [series, setSeries] = useState([{ name: 'Potência (W)', data: [] }]);
   const [options] = useState({
     theme: { mode: 'dark' },
@@ -16,29 +15,30 @@ export function RealtimePowerChart({ voltage }) {
       toolbar: { show: false },
       zoom: { enabled: false }
     },
-    stroke: { curve: 'smooth', width: 2 },
+    stroke: { curve: 'smooth', width: 2, colors: ['#F59E0B'] },
     markers: { size: 0 },
     xaxis: { type: 'datetime', range: 30000, labels: { style: { colors: '#A0AEC0' }}},
-    yaxis: { title: { text: 'Watts (W)', style: { color: '#A0AEC0' }}, labels: { style: { colors: '#A0AEC0' }}},
+    yaxis: { 
+      title: { text: 'Watts (W)', style: { color: '#A0AEC0' }}, 
+      labels: { 
+        style: { colors: '#A0AEC0' },
+        formatter: (val) => val.toFixed(0) // Arredonda para inteiro
+      }
+    },
     grid: { borderColor: '#4A5568' },
     legend: { show: true }
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      const dataPoints = await getRealtimeData('2m');
-      const formattedData = dataPoints.map(point => ({
+    if (data && data.length > 0 && voltage) {
+      const formattedData = data.map(point => ({
         x: new Date(point.time).getTime(),
-        y: (point.value * voltage) 
+        y: parseFloat((point.current * voltage).toFixed(0))
       }));
       
       setSeries([{ name: 'Potência (W)', data: formattedData.slice(-MAX_DATA_POINTS) }]);
-    };
-    fetchData();
-    const intervalId = setInterval(fetchData, 1000); 
-
-    return () => clearInterval(intervalId);
-  }, [voltage]); 
+    }
+  }, [data, voltage]); 
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
@@ -47,3 +47,8 @@ export function RealtimePowerChart({ voltage }) {
     </div>
   );
 }
+
+RealtimePowerChart.propTypes = {
+  voltage: PropTypes.number.isRequired,
+  data: PropTypes.array.isRequired
+};
