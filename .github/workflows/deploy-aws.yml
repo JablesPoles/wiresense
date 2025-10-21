@@ -2,11 +2,11 @@ name: Deploy to AWS
 
 on:
   push:
-    branches: ["aws-deploy"]
+    branches: ["aws-deploy"] # Certifique-se que esta é sua branch de deploy
     paths:
       - 'frontend/**'
       - 'infra/**'
-      - '.github/workflows/deploy-aws.yml' # Importante adicionar o próprio workflow
+      - '.github/workflows/deploy-aws.yml'
   workflow_dispatch:
 
 permissions:
@@ -20,47 +20,14 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20" # Ou a versão que você usa
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Instalar dependências do Frontend
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Build do Frontend
-        working-directory: ./frontend
-        # Passa a URL da API como variável de ambiente para o build
-        env:
-          VITE_API_BASE_URL: "https://${{ steps.get-api-url.outputs.api_id }}.execute-api.sa-east-1.amazonaws.com/v1" # Constrói a URL dinamicamente
-        run: npm run build
-
       - name: Configurar credenciais AWS usando OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::782329476114:role/GitHubActions-WiresenseInfra-DeployRole
+          role-to-assume: arn:aws:iam::782329476114:role/GitHubActions-WiresenseInfra-DeployRole # Confirme se o nome da role está correto
           aws-region: sa-east-1
 
-      # --- Opcional: Atualizar Imagem InfluxDB (se customizada) ---
-      # Se você não tem um InfluxDB customizado, pode remover estes 3 passos
-      # - name: Login to Amazon ECR 
-      #   id: login-ecr
-      #   uses: aws-actions/amazon-ecr-login@v2
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v3
-      # - name: Build and Push InfluxDB Image 
-      #   uses: docker/build-push-action@v5
-      #   with:
-      #     context: ./infra/influxdb # Ajuste o path
-      #     file: ./infra/influxdb/Dockerfile # Ajuste o path
-      #     platforms: linux/amd64
-      #     push: true
-      #     tags: ${{ steps.login-ecr.outputs.registry }}/wiresense/influxdb:latest
-      # -----------------------------------------------------------------
-      
+      # --- ETAPA 1: INFRAESTRUTURA (TERRAFORM) ---
+
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -72,24 +39,43 @@ jobs:
         run: terraform apply -auto-approve -no-color
         working-directory: ./infra/terraform
 
-      # Obtém o ID da API Gateway do estado do Terraform para construir a URL
-      - name: Get API Gateway ID Output
-        id: get-api-url
-        run: echo "api_id=$(terraform output -raw rest_api_id)" >> $GITHUB_OUTPUT
+      # Obtém as saídas do Terraform APÓS o apply
+      - name: Get Terraform Outputs
+        id: terraform-outputs
+        run: |
+          echo "api_id=$(terraform output -raw rest_api_id)" >> $GITHUB_OUTPUT
+          echo "bucket_name=$(terraform output -raw frontend_bucket_name)" >> $GITHUB_OUTPUT
+          echo "cf_distro_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
         working-directory: ./infra/terraform
 
-      - name: Get Frontend Bucket Name Output
-        id: get-bucket-name
-        run: echo "bucket_name=$(terraform output -raw frontend_bucket_name)" >> $GITHUB_OUTPUT
-        working-directory: ./infra/terraform
+      # --- ETAPA 2: BUILD E DEPLOY DO FRONTEND ---
 
-      - name: Get CloudFront Distribution ID Output
-        id: get-cf-distro-id
-        run: echo "cf_distro_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
-        working-directory: ./infra/terraform
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Sync Frontend files to S3 Bucket
-        run: aws s3 sync ./frontend/dist s3://${{ steps.get-bucket-name.outputs.bucket_name }} --delete
+      - name: Instalar dependências do Frontend
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: Build do Frontend com a URL da API
+        # Passa a URL da API (agora disponível) como variável de ambiente para o build
+        env:
+          VITE_API_BASE_URL: "https:// ${{ steps.terraform-outputs.outputs.api_id }}.execute-api.sa-east-1.amazonaws.com/v1"
+        run: npm run build
+        working-directory: ./frontend
+
+      - name: Sincronizar arquivos do Frontend com o S3
+        run: aws s3 sync ./frontend/dist s3://${{ steps.terraform-outputs.outputs.bucket_name }} --delete
         
-      - name: Create CloudFront Invalidation
-        run: aws cloudfront create-invalidation --distribution-id ${{ steps.get-cf-distro-id.outputs.cf_distro_id }} --paths "/*"
+      - name: Criar Invalidação no CloudFront
+        run: aws cloudfront create-invalidation --distribution-id ${{ steps.terraform-outputs.outputs.cf_distro_id }} --paths "/*"
+
+      # --- ETAPA 3: ATUALIZAR SERVIÇO INFLUXDB (se necessário) ---
+      # - name: Forçar novo deploy do InfluxDB
+      #   # Este passo só é necessário se você também atualiza a imagem do InfluxDB no pipeline
+      #   run: aws ecs update-service --cluster wiresense-cluster --service influxdb-service --force-new-deployment --region sa-east-1
+
