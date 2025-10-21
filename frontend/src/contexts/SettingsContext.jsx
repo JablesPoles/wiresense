@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext } from 'react';
 
 const SettingsContext = createContext();
-
+//trigger
 export const SettingsProvider = ({ children }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [voltage, setVoltage] = useState(() => {
