@@ -65,43 +65,43 @@ resource "aws_security_group_rule" "influxdb_to_efs" {
   security_group_id        = aws_security_group.efs.id
 }
 
-# CloudWatch Log Group Frontend
-resource "aws_cloudwatch_log_group" "frontend" {
-  name              = "/ecs/frontend"
-  retention_in_days = 1
-}
+# # CloudWatch Log Group Frontend
+# resource "aws_cloudwatch_log_group" "frontend" {
+#   name              = "/ecs/frontend"
+#   retention_in_days = 1
+# }
 
-# ECS Task Definitions
-resource "aws_ecs_task_definition" "frontend" {
-  family                   = "frontend"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+# # ECS Task Definitions
+# resource "aws_ecs_task_definition" "frontend" {
+#   family                   = "frontend"
+#   requires_compatibilities = ["FARGATE"]
+#   network_mode             = "awsvpc"
+#   cpu                      = "256"
+#   memory                   = "512"
+#   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
-  container_definitions = jsonencode([
-    {
-      name      = "frontend"
-      image     = aws_ecr_repository.wiresense_frontend.repository_url
-      cpu       = 256
-      memory    = 512
-      essential = true
-      portMappings = [{ containerPort = 80, hostPort = 80 }]
-      environment = [
-        { name = "REACT_APP_INFLUXDB_URL", value = "http://influxdb.wiresense.local:8086" }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/frontend"
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "frontend"
-        }
-      }
-    }
-  ])
-}
+#   container_definitions = jsonencode([
+#     {
+#       name      = "frontend"
+#       image     = aws_ecr_repository.wiresense_frontend.repository_url
+#       cpu       = 256
+#       memory    = 512
+#       essential = true
+#       portMappings = [{ containerPort = 80, hostPort = 80 }]
+#       environment = [
+#         { name = "REACT_APP_INFLUXDB_URL", value = "http://influxdb.wiresense.local:8086" }
+#       ]
+#       logConfiguration = {
+#         logDriver = "awslogs"
+#         options = {
+#           awslogs-group         = "/ecs/frontend"
+#           awslogs-region        = var.aws_region
+#           awslogs-stream-prefix = "frontend"
+#         }
+#       }
+#     }
+#   ])
+# }
 
 resource "aws_ecs_task_definition" "influxdb" {
   family                   = "influxdb"
@@ -164,26 +164,26 @@ resource "aws_ecs_task_definition" "influxdb" {
   ])
 }
 
-# ECS Services
-resource "aws_ecs_service" "frontend" {
-  name            = "frontend-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+# # ECS Services
+# resource "aws_ecs_service" "frontend" {
+#   name            = "frontend-service"
+#   cluster         = aws_ecs_cluster.main.id
+#   task_definition = aws_ecs_task_definition.frontend.arn
+#   desired_count   = 1
+#   launch_type     = "FARGATE"
 
-  network_configuration {
-    subnets          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-    assign_public_ip = false
-    security_groups  = [aws_security_group.ecs_tasks.id]
-  }
+#   network_configuration {
+#     subnets          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+#     assign_public_ip = false
+#     security_groups  = [aws_security_group.ecs_tasks.id]
+#   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.frontend.arn
-    container_name   = "frontend"
-    container_port   = 80
-  }
-}
+#   load_balancer {
+#     target_group_arn = aws_lb_target_group.frontend.arn
+#     container_name   = "frontend"
+#     container_port   = 80
+#   }
+# }
 
 resource "aws_ecs_service" "influxdb" {
   name            = "influxdb-service"

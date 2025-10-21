@@ -1,29 +1,42 @@
-# Nome do Workflow para deploy na AWS
 name: Deploy to AWS
 
 on:
   push:
-    branches: ["aws-deploy"]
-    # Gatilho: Executar apenas se houver mudanças nas pastas 'frontend' ou 'infra'
+    branches: ["main"]
     paths:
       - 'frontend/**'
       - 'infra/**'
+      - '.github/workflows/deploy-aws.yml' # Importante adicionar o próprio workflow
   workflow_dispatch:
 
-# Permissões necessárias para a autenticação OIDC da AWS
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  #####################################################
-  # JOB: DEPLOY DA INFRAESTRUTURA COMPLETA NA AWS #
-  #####################################################
   deploy-to-aws:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20" # Ou a versão que você usa
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências do Frontend
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build do Frontend
+        working-directory: ./frontend
+        # Passa a URL da API como variável de ambiente para o build
+        env:
+          VITE_API_BASE_URL: "https://${{ steps.get-api-url.outputs.api_id }}.execute-api.sa-east-1.amazonaws.com/v1" # Constrói a URL dinamicamente
+        run: npm run build
 
       - name: Configurar credenciais AWS usando OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -31,30 +44,23 @@ jobs:
           role-to-assume: arn:aws:iam::782329476114:role/GitHubActions-WiresenseInfra-DeployRole
           aws-region: sa-east-1
 
-      - name: Fazer login no Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Construir e enviar imagem do Frontend para ECR
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          platforms: linux/amd64
-          push: true
-          no-cache: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/wiresense/frontend:latest
-          build-args: |
-            VITE_INFLUX_URL=http://influxdb.wiresense.local:8086
-            VITE_INFLUX_TOKEN=${{ secrets.VITE_INFLUX_TOKEN }}
-            VITE_INFLUX_ORG=${{ secrets.VITE_INFLUX_ORG }}
-            VITE_INFLUX_BUCKET=${{ secrets.VITE_INFLUX_BUCKET }}
-          # cache-from: type=gha
-          # cache-to: type=gha,mode=max
-
+      # --- Opcional: Atualizar Imagem InfluxDB (se customizada) ---
+      # Se você não tem um InfluxDB customizado, pode remover estes 3 passos
+      # - name: Login to Amazon ECR 
+      #   id: login-ecr
+      #   uses: aws-actions/amazon-ecr-login@v2
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v3
+      # - name: Build and Push InfluxDB Image 
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: ./infra/influxdb # Ajuste o path
+      #     file: ./infra/influxdb/Dockerfile # Ajuste o path
+      #     platforms: linux/amd64
+      #     push: true
+      #     tags: ${{ steps.login-ecr.outputs.registry }}/wiresense/influxdb:latest
+      # -----------------------------------------------------------------
+      
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -66,8 +72,24 @@ jobs:
         run: terraform apply -auto-approve -no-color
         working-directory: ./infra/terraform
 
-      - name: Forçar atualização do serviço Frontend ECS
-        run: aws ecs update-service --cluster wiresense-cluster --service frontend-service --force-new-deployment --region sa-east-1
+      # Obtém o ID da API Gateway do estado do Terraform para construir a URL
+      - name: Get API Gateway ID Output
+        id: get-api-url
+        run: echo "api_id=$(terraform output -raw rest_api_id)" >> $GITHUB_OUTPUT
+        working-directory: ./infra/terraform
 
-      - name: Forçar atualização do serviço InfluxDB ECS
-        run: aws ecs update-service --cluster wiresense-cluster --service influxdb-service --force-new-deployment --region sa-east-1
+      - name: Get Frontend Bucket Name Output
+        id: get-bucket-name
+        run: echo "bucket_name=$(terraform output -raw frontend_bucket_name)" >> $GITHUB_OUTPUT
+        working-directory: ./infra/terraform
+
+      - name: Get CloudFront Distribution ID Output
+        id: get-cf-distro-id
+        run: echo "cf_distro_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+        working-directory: ./infra/terraform
+
+      - name: Sync Frontend files to S3 Bucket
+        run: aws s3 sync ./frontend/dist s3://${{ steps.get-bucket-name.outputs.bucket_name }} --delete
+        
+      - name: Create CloudFront Invalidation
+        run: aws cloudfront create-invalidation --distribution-id ${{ steps.get-cf-distro-id.outputs.cf_distro_id }} --paths "/*"
