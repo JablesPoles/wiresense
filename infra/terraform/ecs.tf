@@ -47,6 +47,13 @@ resource "aws_security_group" "influxdb" {
     security_groups = [aws_security_group.ecs_tasks.id, aws_security_group.lambda.id]
   }
 
+  ingress {
+    protocol        = "tcp"
+    from_port       = 8086
+    to_port         = 8086
+    cidr_blocks = [ "0.0.0.0/0" ]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -197,8 +204,8 @@ resource "aws_ecs_service" "influxdb" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-    assign_public_ip = false
+    subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    assign_public_ip = true
     security_groups  = [aws_security_group.influxdb.id]
   }
 
