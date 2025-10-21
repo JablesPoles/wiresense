@@ -51,8 +51,8 @@ jobs:
             VITE_INFLUX_TOKEN=${{ secrets.VITE_INFLUX_TOKEN }}
             VITE_INFLUX_ORG=${{ secrets.VITE_INFLUX_ORG }}
             VITE_INFLUX_BUCKET=${{ secrets.VITE_INFLUX_BUCKET }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # cache-from: type=gha
+          # cache-to: type=gha,mode=max
 
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
