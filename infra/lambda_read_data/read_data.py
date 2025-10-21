@@ -16,7 +16,10 @@ def get_influx_credentials():
     if cached_secret: return cached_secret
     try:
         response = secrets_manager.get_secret_value(SecretId=secret_arn)
-        secret_data = json.loads(response['StringSecret']) # Corrigido para StringSecret, se aplicável
+        # ▼▼▼ ESTA É A CORREÇÃO CRÍTICA ▼▼▼
+        # O nome correto da chave é 'SecretString', com 'S' minúsculo
+        secret_data = json.loads(response['SecretString'])
+        # ▲▲▲ FIM DA CORREÇÃO ▲▲▲
         cached_secret = {
             'token': secret_data['INFLUXDB_INIT_ADMIN_TOKEN'],
             'org': secret_data['INFLUXDB_ORG'],
@@ -38,14 +41,13 @@ def query_influx(query, org):
             for table in tables:
                 for record in table.records:
                     record_dict = record.values
-                    # Garante que o timestamp seja uma string no formato ISO
                     record_dict['_time'] = record.get_time().isoformat()
                     results.append(record_dict)
     except Exception as e:
         print(f"Erro ao consultar InfluxDB: {e}")
     return results
 
-# --- Função Principal ---
+# --- Função Principal (sem alterações na lógica) ---
 def handler(event, context):
     try:
         creds = get_influx_credentials()
@@ -63,10 +65,9 @@ def handler(event, context):
             "Access-Control-Allow-Methods": "OPTIONS,GET"
         }
 
-        # --- LÓGICA DE CONSULTA CORRIGIDA ---
+        # --- LÓGICA DE CONSULTA (sem alterações) ---
 
         if query_type == 'latest':
-            # Busca o último ponto de corrente do bucket de dados brutos
             flux_query = f'''
                 from(bucket: "{bucket}")
                   |> range(start: -5m) 
@@ -81,7 +82,6 @@ def handler(event, context):
                 results = None
 
         elif query_type == 'range':
-            # Busca um intervalo de dados brutos para os gráficos em tempo real
             time_range = query_params.get('range', '-5m')
             flux_query = f'''
                 from(bucket: "{bucket}")
@@ -93,14 +93,12 @@ def handler(event, context):
             results = [{"time": r.get('_time'), "current": r.get('_value')} for r in raw_results]
 
         elif query_type == 'summary':
-            # Busca o último valor do total diário (calculado pela Task)
             today_query = f'''
                 from(bucket: "{longterm_bucket}")
                   |> range(start: -1d)
                   |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
                   |> last()
             '''
-            # Busca e soma todos os totais diários do mês atual
             month_query = f'''
                 import "date"
                 month_start = date.truncate(t: now(), unit: 1mo)
@@ -120,19 +118,18 @@ def handler(event, context):
             period = query_params.get('period', 'daily')
             limit = int(query_params.get('limit', 7))
             
-            # A query agora apenas busca os dados diários pré-agregados pela Task
             if period == 'daily':
                 range_duration = f"-{limit}d"
                 window_period = "1d"
             else: # period == 'monthly'
-                range_duration = f"-{limit * 31}d" # Busca um range maior para garantir
+                range_duration = f"-{limit * 31}d"
                 window_period = "1mo"
 
             flux_query = f'''
                 from(bucket: "{longterm_bucket}")
                   |> range(start: {range_duration})
                   |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
-                  |> aggregateWindow(every: {window_period}, fn: last, createEmpty: true) // Pega o último valor de cada período
+                  |> aggregateWindow(every: {window_period}, fn: last, createEmpty: true)
                   |> map(fn: (r) => ({{ "x": r._time, "y": r._value }}))
                   |> sort(columns: ["x"], desc: true)
                   |> limit(n: {limit})
@@ -157,3 +154,4 @@ def handler(event, context):
             "headers": { "Access-Control-Allow-Origin": "*" },
             "body": json.dumps({"error": str(e)})
         }
+
