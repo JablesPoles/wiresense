@@ -12,6 +12,7 @@ import {
   getMonthlyEnergyHistory
 } from '../services/apiService';
 
+// FORCANDO A EXECUCAO DO TRIGGER
 const DashboardPage = () => {
   const { voltage, tarifaKwh, moeda, setIsSettingsOpen } = useSettings(); 
   const [needsAttention, setNeedsAttention] = useState(false);
