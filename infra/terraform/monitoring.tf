@@ -8,45 +8,45 @@ resource "aws_sns_topic_subscription" "email_subscription" {
   endpoint = "matheuspolesnunes@gmail.com"
 }
 
-resource "aws_cloudwatch_metric_alarm" "frontend_high_cpu" {
-  alarm_name = "${var.project_name}-frontend-high-cpu"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods = 2
-  metric_name = "CPUUtilization"
-  namespace = "AWS/ECS"
-  period = "300"
-  statistic = "Average"
-  threshold = "80"
+# resource "aws_cloudwatch_metric_alarm" "frontend_high_cpu" {
+#   alarm_name = "${var.project_name}-frontend-high-cpu"
+#   comparison_operator = "GreaterThanOrEqualToThreshold"
+#   evaluation_periods = 2
+#   metric_name = "CPUUtilization"
+#   namespace = "AWS/ECS"
+#   period = "300"
+#   statistic = "Average"
+#   threshold = "80"
 
-  dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = aws_ecs_service.frontend.name
-  }
+#   dimensions = {
+#     ClusterName = aws_ecs_cluster.main.name
+#     ServiceName = aws_ecs_service.frontend.name
+#   }
 
-  alarm_description = "Este alarme dispara se a utilizacao de CPU do frontend for 80% ou mais por 10 minutos"
-  alarm_actions = [aws_sns_topic.alarms_topic.arn]
-  ok_actions = [aws_sns_topic.alarms_topic.arn]
-}
+#   alarm_description = "Este alarme dispara se a utilizacao de CPU do frontend for 80% ou mais por 10 minutos"
+#   alarm_actions = [aws_sns_topic.alarms_topic.arn]
+#   ok_actions = [aws_sns_topic.alarms_topic.arn]
+# }
 
-resource "aws_cloudwatch_metric_alarm" "frontend_down" {
-  alarm_name = "${var.project_name}-frontend-down"
-  comparison_operator = "LessThanThreshold"
-  evaluation_periods = 1
-  metric_name = "RunningTaskCount"
-  namespace = "AWS/ECS"
-  period = "60"
-  statistic = "Average"
-  threshold = "1"
+# resource "aws_cloudwatch_metric_alarm" "frontend_down" {
+#   alarm_name = "${var.project_name}-frontend-down"
+#   comparison_operator = "LessThanThreshold"
+#   evaluation_periods = 1
+#   metric_name = "RunningTaskCount"
+#   namespace = "AWS/ECS"
+#   period = "60"
+#   statistic = "Average"
+#   threshold = "1"
 
-  dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = aws_ecs_service.frontend.name
-  }
+#   dimensions = {
+#     ClusterName = aws_ecs_cluster.main.name
+#     ServiceName = aws_ecs_service.frontend.name
+#   }
 
-  alarm_description = "Este alarme dispara se o servico de frontend nao possuir nenhuma task rodando"
-  alarm_actions = [aws_sns_topic.alarms_topic.arn]
-  ok_actions = [aws_sns_topic.alarms_topic.arn]
-}
+#   alarm_description = "Este alarme dispara se o servico de frontend nao possuir nenhuma task rodando"
+#   alarm_actions = [aws_sns_topic.alarms_topic.arn]
+#   ok_actions = [aws_sns_topic.alarms_topic.arn]
+# }
 
 resource "aws_cloudwatch_metric_alarm" "influxdb_down" {
   alarm_name = "${var.project_name}-influxdb-down"
