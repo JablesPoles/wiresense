@@ -11,15 +11,11 @@ secret_arn = os.environ['SECRET_ARN']
 cached_secret = None
 
 def get_influx_credentials():
-    """Busca as credenciais do Secrets Manager, com cache."""
     global cached_secret
     if cached_secret: return cached_secret
     try:
         response = secrets_manager.get_secret_value(SecretId=secret_arn)
-        # ▼▼▼ ESTA É A CORREÇÃO CRÍTICA ▼▼▼
-        # O nome correto da chave é 'SecretString', com 'S' minúsculo
         secret_data = json.loads(response['SecretString'])
-        # ▲▲▲ FIM DA CORREÇÃO ▲▲▲
         cached_secret = {
             'token': secret_data['INFLUXDB_INIT_ADMIN_TOKEN'],
             'org': secret_data['INFLUXDB_ORG'],
@@ -30,7 +26,6 @@ def get_influx_credentials():
         print(f"Erro ao buscar segredo: {e}"); raise e
 
 def query_influx(query, org):
-    """Executa uma consulta Flux e retorna uma lista de dicionários."""
     creds = get_influx_credentials()
     token = creds['token']
     results = []
@@ -47,7 +42,7 @@ def query_influx(query, org):
         print(f"Erro ao consultar InfluxDB: {e}")
     return results
 
-# --- Função Principal (sem alterações na lógica) ---
+# --- Função Principal ---
 def handler(event, context):
     try:
         creds = get_influx_credentials()
@@ -65,40 +60,39 @@ def handler(event, context):
             "Access-Control-Allow-Methods": "OPTIONS,GET"
         }
 
-        # --- LÓGICA DE CONSULTA (sem alterações) ---
+        # --- LÓGICA DE CONSULTA CORRIGIDA ---
 
-        if query_type == 'latest':
+        if query_type == 'latest' or query_type == 'range':
+            # Mantém a lógica para tempo real, pois ela já funciona
+            time_range = '-5m' if query_type == 'latest' else query_params.get('range', '-5m')
+            agg_window = "10s" if query_type == 'range' else "1s" # Apenas para exemplo
+            
             flux_query = f'''
                 from(bucket: "{bucket}")
-                  |> range(start: -5m) 
+                  |> range(start: {time_range}) 
                   |> filter(fn: (r) => r["_measurement"] == "environment" and r["_field"] == "current")
                   |> last()
-            '''
-            raw_results = query_influx(flux_query, org)
-            if raw_results:
-                latest_point = raw_results[0]
-                results = {"time": latest_point.get('_time'), "current": latest_point.get('_value')}
-            else:
-                results = None
-
-        elif query_type == 'range':
-            time_range = query_params.get('range', '-5m')
-            flux_query = f'''
+            ''' if query_type == 'latest' else f'''
                 from(bucket: "{bucket}")
                   |> range(start: {time_range})
                   |> filter(fn: (r) => r["_measurement"] == "environment" and r["_field"] == "current")
-                  |> aggregateWindow(every: 10s, fn: mean, createEmpty: false)
+                  |> aggregateWindow(every: {agg_window}, fn: mean, createEmpty: false)
             '''
             raw_results = query_influx(flux_query, org)
-            results = [{"time": r.get('_time'), "current": r.get('_value')} for r in raw_results]
+            if query_type == 'latest':
+                results = {"time": raw_results[0]['_time'], "current": raw_results[0]['_value']} if raw_results else None
+            else:
+                results = [{"time": r.get('_time'), "current": r.get('_value')} for r in raw_results]
 
         elif query_type == 'summary':
+            # CORREÇÃO: Busca o último valor do total diário
             today_query = f'''
                 from(bucket: "{longterm_bucket}")
                   |> range(start: -1d)
                   |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
                   |> last()
             '''
+            # CORREÇÃO: Soma todos os totais diários do mês atual
             month_query = f'''
                 import "date"
                 month_start = date.truncate(t: now(), unit: 1mo)
@@ -109,34 +103,30 @@ def handler(event, context):
             '''
             today_result = query_influx(today_query, org)
             month_result = query_influx(month_query, org)
+            
+            # CORREÇÃO: A query do mês retorna a soma, que é o valor que queremos
             results = {
                 "today": today_result[0]['_value'] if today_result else 0,
-                "month": month_result[0]['_value'] if month_result else 0
+                "month": month_result[0]['_value'] if month_result else (today_result[0]['_value'] if today_result else 0)
             }
 
         elif query_type == 'history':
             period = query_params.get('period', 'daily')
             limit = int(query_params.get('limit', 7))
             
-            if period == 'daily':
-                range_duration = f"-{limit}d"
-                window_period = "1d"
-            else: # period == 'monthly'
-                range_duration = f"-{limit * 31}d"
-                window_period = "1mo"
-
+            # CORREÇÃO: A query agora simplesmente busca os últimos 'N' pontos diários que a Task criou.
             flux_query = f'''
                 from(bucket: "{longterm_bucket}")
-                  |> range(start: {range_duration})
+                  |> range(start: -30d) // Busca em um período maior para garantir que encontramos os pontos
                   |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
-                  |> aggregateWindow(every: {window_period}, fn: last, createEmpty: true)
+                  |> sort(columns: ["_time"], desc: true) // Ordena do mais novo para o mais antigo
+                  |> limit(n: {limit}) // Pega os últimos 'N' pontos
+                  |> sort(columns: ["_time"]) // Reordena do mais antigo para o mais novo (bom para gráficos)
                   |> map(fn: (r) => ({{ "x": r._time, "y": r._value }}))
-                  |> sort(columns: ["x"], desc: true)
-                  |> limit(n: {limit})
-                  |> sort(columns: ["x"])
             '''
             raw_results = query_influx(flux_query, org)
-            results = [{"x": r.get('x'), "y": r.get('y')} for r in raw_results]
+            # A query já formata os dados, apenas repassamos
+            results = raw_results
 
         else:
              return { "statusCode": 400, "headers": cors_headers, "body": json.dumps({"error": "Tipo de query inválido"}) }
@@ -149,9 +139,5 @@ def handler(event, context):
 
     except Exception as e:
         print(f"Erro no handler: {e}")
-        return {
-            "statusCode": 500,
-            "headers": { "Access-Control-Allow-Origin": "*" },
-            "body": json.dumps({"error": str(e)})
-        }
+        return { "statusCode": 500, "headers": { "Access-Control-Allow-Origin": "*" }, "body": json.dumps({"error": str(e)}) }
 
