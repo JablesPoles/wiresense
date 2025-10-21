@@ -1,7 +1,0 @@
-# Ignorar arquivos de dependência e build local
-node_modules
-dist
-.env
-
-# IGNORAR ESTE ARQUIVO DURANTE O BUILD
-jsconfig.json
