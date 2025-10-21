@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext } from 'react';
-import { setVoltagePreference } from '../services/apiService';
 
 const SettingsContext = createContext();
 
@@ -18,14 +17,6 @@ export const SettingsProvider = ({ children }) => {
   const [moeda, setMoeda] = useState(() => {
     return localStorage.getItem('user_moeda') || 'BRL'; 
   });
-
-  const updateVoltage = (newVoltage) => {
-    const numericVoltage = Number(newVoltage);
-    if (isNaN(numericVoltage)) return;
-    setVoltage(numericVoltage);
-    localStorage.setItem('user_voltage', numericVoltage);
-    setVoltagePreference(numericVoltage); 
-  };
   
   const updateTarifaKwh = (newTarifa) => {
     const numericTarifa = Number(newTarifa);
