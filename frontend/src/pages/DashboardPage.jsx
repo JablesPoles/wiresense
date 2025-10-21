@@ -6,12 +6,11 @@ import { CurrentRealtimeChart } from '../components/charts/CurrentRealtimeChart'
 import { RealtimePowerChart } from '../components/charts/RealtimePowerChart';
 import { HistoricalBarChart } from '../components/charts/HistoricalBarChart';
 import { 
-  getLatestCurrent, 
-  getTodaysEnergy,
-  getMonthlyEnergy,
+  getLatestDataPoint, 
+  getEnergySummary,
   getDailyEnergyHistory,
   getMonthlyEnergyHistory
-} from '../services/influxService';
+} from '../services/apiService';
 
 const DashboardPage = () => {
   const { voltage, tarifaKwh, moeda, setIsSettingsOpen } = useSettings(); 
@@ -41,17 +40,12 @@ const DashboardPage = () => {
   }
 
   useEffect(() => {
-    const fetchCurrent = () => {
-      getLatestCurrent().then(latestCurrent => {
-        if (latestCurrent && typeof latestCurrent._value === 'number') {
-          setCurrent(latestCurrent._value);
-        } else {
-          setCurrent(0);
-        }
-      });
+    const fetchCurrent = async () => {
+      const latestData = await getLatestDataPoint();
+      setCurrent(latestData ? latestData.current : 0); 
     };
     fetchCurrent();
-    const realtimeInterval = setInterval(fetchCurrent, 2000);
+    const realtimeInterval = setInterval(fetchCurrent, 5000); 
     return () => clearInterval(realtimeInterval);
   }, []);
 
@@ -63,19 +57,24 @@ const DashboardPage = () => {
     }
   }, [current, voltage]);
 
+  // Busca os resumos e históricos (agora da API)
   useEffect(() => {
-    const fetchAllData = () => {
-      getTodaysEnergy().then(data => setTodaysEnergy(data?._value ?? 0));
-      getMonthlyEnergy().then(data => setMonthlyEnergy(data?._value ?? 0));
-      getDailyEnergyHistory().then(data => setDailyHistory(data));
-      getMonthlyEnergyHistory().then(data => setMonthlyHistory(data));
+    const fetchAllData = async () => {
+      const summary = await getEnergySummary();
+      setTodaysEnergy(summary?.today ?? 0);
+      setMonthlyEnergy(summary?.month ?? 0);
+
+      const daily = await getDailyEnergyHistory();
+      setDailyHistory(daily); 
+
+      const monthly = await getMonthlyEnergyHistory();
+      setMonthlyHistory(monthly);
     };
     fetchAllData();
     const intervalId = setInterval(fetchAllData, 5 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, []);
 
-  // NOVO useEffect: Calcula o custo sempre que o consumo ou a tarifa mudam
   useEffect(() => {
     if (todaysEnergy !== null && tarifaKwh) {
       setCustoHoje((todaysEnergy * tarifaKwh).toFixed(2));

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext } from 'react';
-import { setVoltagePreference } from '../services/influxService';
+import { setVoltagePreference } from '../services/apiService';
 
 const SettingsContext = createContext();
 

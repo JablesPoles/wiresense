@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
-import { getLatestCurrent } from '../../services/influxService';
+import { getRealtimeData } from '../../services/apiService';
 
 const MAX_DATA_POINTS = 30;
 
@@ -25,24 +25,20 @@ export function RealtimePowerChart({ voltage }) {
   });
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      getLatestCurrent().then(dataPoint => {
-        if (dataPoint && typeof dataPoint._value === 'number') {
-          const power = dataPoint._value * voltage;
-          const newPoint = {
-            x: new Date(dataPoint._time).getTime(),
-            y: power
-          };
-          setSeries(prev => {
-            const data = [...prev[0].data, newPoint];
-            if (data.length > MAX_DATA_POINTS) data.shift();
-            return [{ ...prev[0], data }];
-          });
-        }
-      });
-    }, 2000);
+    const fetchData = async () => {
+      const dataPoints = await getRealtimeData('2m');
+      const formattedData = dataPoints.map(point => ({
+        x: new Date(point.time).getTime(),
+        y: (point.value * voltage) 
+      }));
+      
+      setSeries([{ name: 'Potência (W)', data: formattedData.slice(-MAX_DATA_POINTS) }]);
+    };
+    fetchData();
+    const intervalId = setInterval(fetchData, 1000); 
+
     return () => clearInterval(intervalId);
-  }, [voltage]);
+  }, [voltage]); 
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-lg">

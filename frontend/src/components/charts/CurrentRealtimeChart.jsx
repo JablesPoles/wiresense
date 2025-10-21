@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
-import { getLatestCurrent } from '../../services/influxService';
+import { getRealtimeData } from '../../services/apiService';
 
 const MAX_DATA_POINTS = 30;
 
@@ -25,21 +25,20 @@ export function CurrentRealtimeChart() {
   });
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      getLatestCurrent().then(dataPoint => {
-        if (dataPoint && typeof dataPoint._value === 'number') {
-          const newPoint = {
-            x: new Date(dataPoint._time).getTime(),
-            y: dataPoint._value
-          };
-          setSeries(prev => {
-            const data = [...prev[0].data, newPoint];
-            if (data.length > MAX_DATA_POINTS) data.shift();
-            return [{ ...prev[0], data }];
-          });
-        }
-      });
-    }, 2000);
+    const fetchData = async () => {
+      // 👇 Chama a função para buscar dados em range (ex: últimos 2 minutos)
+      const dataPoints = await getRealtimeData('2m'); 
+      const formattedData = dataPoints.map(point => ({
+        x: new Date(point.time).getTime(),
+        y: point.value 
+      }));
+
+      setSeries([{ name: 'Corrente (A)', data: formattedData.slice(-MAX_DATA_POINTS) }]);
+    };
+
+    fetchData(); 
+    const intervalId = setInterval(fetchData, 1000); 
+
     return () => clearInterval(intervalId);
   }, []);
 
