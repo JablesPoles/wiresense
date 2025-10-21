@@ -17,6 +17,7 @@ export const SettingsModal = () => {
     'EUR': 'Euro (€)',
   }
 
+  
   return (
     <AnimatePresence>
       {isSettingsOpen && (
