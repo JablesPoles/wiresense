@@ -17,6 +17,13 @@ export const SettingsProvider = ({ children }) => {
   const [moeda, setMoeda] = useState(() => {
     return localStorage.getItem('user_moeda') || 'BRL'; 
   });
+
+  const updateVoltage = (newVoltage) => {
+    const numericVoltage = Number(newVoltage);
+    if (isNaN(numericVoltage)) return;
+    setVoltage(numericVoltage);
+    localStorage.setItem('user_voltage', numericVoltage);
+  };
   
   const updateTarifaKwh = (newTarifa) => {
     const numericTarifa = Number(newTarifa);
