@@ -1,6 +1,6 @@
-# --- LAMBDA DE ESCRITA DE DADOS (EXISTENTE) ---
+# --- LAMBDA FUNCTIONS ---
 
-# Prepara o .zip para a Lambda de escrita
+# Data ingestor Lambda (.zip)
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda_function"
@@ -14,7 +14,7 @@ resource "aws_lambda_function" "data_ingestor" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "index.handler"
   runtime          = "python3.9"
-  timeout          = 30 # Adicionado para robustez
+  timeout          = 30
 
   vpc_config {
     subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
@@ -29,9 +29,7 @@ resource "aws_lambda_function" "data_ingestor" {
   }
 }
 
-# --- LAMBDA DE LEITURA DE DADOS (EXISTENTE) ---
-
-# Prepara o .zip para a nova Lambda de leitura
+# Read data Lambda (.zip)
 data "archive_file" "lambda_read_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda_read_data"
@@ -45,7 +43,7 @@ resource "aws_lambda_function" "read_data" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "read_data.handler"
   runtime          = "python3.9"
-  timeout          = 30 # Adicionado para robustez
+  timeout          = 30
 
   vpc_config {
     subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
@@ -60,7 +58,7 @@ resource "aws_lambda_function" "read_data" {
   }
 }
 
-# --- SECURITY GROUP PARA AS LAMBDAS (EXISTENTE) ---
+# Security Group para Lambdas
 resource "aws_security_group" "lambda" {
   name   = "${var.project_name}-lambda-sg"
   vpc_id = aws_vpc.main.id
@@ -73,20 +71,22 @@ resource "aws_security_group" "lambda" {
   }
 }
 
-# --- API GATEWAY (EXISTENTE E EXPANDIDA) ---
+# --- API GATEWAY ---
 
+# API Gateway REST API
 resource "aws_api_gateway_rest_api" "wiresense_api" {
   name        = "${var.project_name}-api"
   description = "API para receber e fornecer os dados do IoT"
 }
 
+# Recurso /data
 resource "aws_api_gateway_resource" "data_resource" {
   rest_api_id = aws_api_gateway_rest_api.wiresense_api.id
   parent_id   = aws_api_gateway_rest_api.wiresense_api.root_resource_id
   path_part   = "data"
 }
 
-# --- MÉTODO POST (EXISTENTE) ---
+# POST method
 resource "aws_api_gateway_method" "post_method" {
   rest_api_id      = aws_api_gateway_rest_api.wiresense_api.id
   resource_id      = aws_api_gateway_resource.data_resource.id
@@ -104,7 +104,7 @@ resource "aws_api_gateway_integration" "lambda_integration" {
   uri                     = aws_lambda_function.data_ingestor.invoke_arn
 }
 
-# --- MÉTODO GET (EXISTENTE) ---
+# GET method
 resource "aws_api_gateway_method" "get_method" {
   rest_api_id      = aws_api_gateway_rest_api.wiresense_api.id
   resource_id      = aws_api_gateway_resource.data_resource.id
@@ -122,18 +122,14 @@ resource "aws_api_gateway_integration" "lambda_read_integration" {
   uri                     = aws_lambda_function.read_data.invoke_arn
 }
 
-
-# --- CONFIGURAÇÃO DE CORS (CORRIGIDO) ---
-
-# Adiciona o método OPTIONS ao recurso /data
+# OPTIONS method (CORS)
 resource "aws_api_gateway_method" "cors_options_method" {
-  rest_api_id      = aws_api_gateway_rest_api.wiresense_api.id
-  resource_id      = aws_api_gateway_resource.data_resource.id
-  http_method      = "OPTIONS"
-  authorization    = "NONE"
+  rest_api_id   = aws_api_gateway_rest_api.wiresense_api.id
+  resource_id   = aws_api_gateway_resource.data_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
 }
 
-# Define os cabeçalhos que a resposta do método OPTIONS pode retornar
 resource "aws_api_gateway_method_response" "cors_options_200" {
   rest_api_id = aws_api_gateway_rest_api.wiresense_api.id
   resource_id = aws_api_gateway_resource.data_resource.id
@@ -146,7 +142,6 @@ resource "aws_api_gateway_method_response" "cors_options_200" {
   }
 }
 
-# Cria uma integração "mock" para o OPTIONS, que não chama a Lambda
 resource "aws_api_gateway_integration" "cors_options_integration" {
   rest_api_id = aws_api_gateway_rest_api.wiresense_api.id
   resource_id = aws_api_gateway_resource.data_resource.id
@@ -158,7 +153,6 @@ resource "aws_api_gateway_integration" "cors_options_integration" {
   }
 }
 
-# Conecta a resposta da integração mock com a resposta do método
 resource "aws_api_gateway_integration_response" "cors_options_integration_response" {
   rest_api_id = aws_api_gateway_rest_api.wiresense_api.id
   resource_id = aws_api_gateway_resource.data_resource.id
@@ -171,18 +165,12 @@ resource "aws_api_gateway_integration_response" "cors_options_integration_respon
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
 
-  response_templates = {
-    "application/json" = ""
-  }
+  response_templates = { "application/json" = "" }
 
   depends_on = [aws_api_gateway_integration.cors_options_integration]
 }
-# --- FIM DA CONFIGURAÇÃO DE CORS ---
 
-
-# --- PERMISSÕES E DEPLOY DA API ---
-
-# Permissão para o POST (existente)
+# Lambda permissions for API Gateway
 resource "aws_lambda_permission" "apigw_lambda" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
@@ -191,7 +179,6 @@ resource "aws_lambda_permission" "apigw_lambda" {
   source_arn    = "${aws_api_gateway_rest_api.wiresense_api.execution_arn}/*/${aws_api_gateway_method.post_method.http_method}/*"
 }
 
-# Permissão para o GET (existente)
 resource "aws_lambda_permission" "apigw_lambda_read" {
   statement_id  = "AllowAPIGatewayInvokeRead"
   action        = "lambda:InvokeFunction"
@@ -200,8 +187,7 @@ resource "aws_lambda_permission" "apigw_lambda_read" {
   source_arn    = "${aws_api_gateway_rest_api.wiresense_api.execution_arn}/*/${aws_api_gateway_method.get_method.http_method}/*"
 }
 
-# AJUSTADO: O deployment agora usa 'triggers' para recriar automaticamente
-# quando qualquer parte da API (métodos, integrações) é alterada.
+# Deployment and Stage
 resource "aws_api_gateway_deployment" "main" {
   rest_api_id = aws_api_gateway_rest_api.wiresense_api.id
 
@@ -210,11 +196,11 @@ resource "aws_api_gateway_deployment" "main" {
       aws_api_gateway_resource.data_resource.id,
       aws_api_gateway_method.post_method.id,
       aws_api_gateway_method.get_method.id,
-      aws_api_gateway_method.cors_options_method.id, # <-- Adicionado ao trigger
+      aws_api_gateway_method.cors_options_method.id,
       aws_api_gateway_integration.lambda_integration.id,
       aws_api_gateway_integration.lambda_read_integration.id,
-      aws_api_gateway_integration.cors_options_integration.id, # <-- Adicionado ao trigger
-      aws_api_gateway_integration_response.cors_options_integration_response.id, # <-- Adicionado ao trigger
+      aws_api_gateway_integration.cors_options_integration.id,
+      aws_api_gateway_integration_response.cors_options_integration_response.id,
     ]))
   }
 
@@ -227,36 +213,33 @@ resource "aws_api_gateway_stage" "v1" {
   stage_name    = "v1"
 }
 
+# API Key and Usage Plan
 resource "aws_api_gateway_api_key" "iot_device_key" {
   name        = "${var.project_name}-iot-device-key"
   description = "Chave de API para o dispositivo IoT WireSense"
   enabled     = true
-  tags = {
-    Project = var.project_name
-  }
+  tags = { Project = var.project_name }
 }
 
 resource "aws_api_gateway_usage_plan" "iot_usage_plan" {
   name        = "${var.project_name}-iot-usage-plan"
   description = "Plano de uso para dispositivos IoT WireSense"
+
   api_stages {
     api_id = aws_api_gateway_rest_api.wiresense_api.id
     stage  = aws_api_gateway_stage.v1.stage_name
   }
 
-  throttle_settings {
-    burst_limit = 5
-    rate_limit  = 10
+  throttle_settings { 
+    burst_limit = 5 
+    rate_limit = 10 
   }
-
-  quota_settings {
-    limit  = 1000
+  quota_settings { 
+    limit = 1000
     period = "DAY"
-  }
+ }
 
-  tags = {
-    Project = var.project_name
-  }
+  tags = { Project = var.project_name }
 }
 
 resource "aws_api_gateway_usage_plan_key" "main" {
@@ -264,4 +247,3 @@ resource "aws_api_gateway_usage_plan_key" "main" {
   key_type      = "API_KEY"
   usage_plan_id = aws_api_gateway_usage_plan.iot_usage_plan.id
 }
-

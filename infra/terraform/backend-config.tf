@@ -1,14 +1,11 @@
-# backend-config.tf
-
 terraform {
-  backend "s3" { // Diz ao Terraform: "Seu backend (memória) será do tipo S3."
-    
-    // ONDE GUARDAR A PLANTA BAIXA (o arquivo .tfstate)
-    bucket         = "wiresense-terraform-state-782329476114" // <<< O nome exato do bucket S3 que criamos.
-    key            = "global/terraform.tfstate"            // <<< O nome e a pasta do arquivo dentro do bucket.
-    region         = "sa-east-1"                           // <<< A região onde o bucket está.
+  backend "s3" {
+    # Backend S3 para armazenar o estado do Terraform
+    bucket         = "wiresense-terraform-state-782329476114"  # Bucket S3 onde o .tfstate será armazenado
+    key            = "global/terraform.tfstate"               # Caminho e nome do arquivo de estado
+    region         = "sa-east-1"                               # Região do bucket S3
 
-    // COMO EVITAR CONFLITOS (o "semáforo")
-    dynamodb_table = "wiresense-terraform-locks"             // <<< O nome da tabela DynamoDB que criamos.
+    # Tabela DynamoDB para travamento do estado (evita alterações simultâneas)
+    dynamodb_table = "wiresense-terraform-locks"
   }
 }

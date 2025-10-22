@@ -1,4 +1,4 @@
-# Endpoint para ECR API
+# Endpoints VPC para ECR API e Docker Registry (interface endpoints)
 resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
@@ -8,7 +8,6 @@ resource "aws_vpc_endpoint" "ecr_api" {
   security_group_ids  = [aws_security_group.vpc_endpoint.id]
 }
 
-# Endpoint para ECR Docker Registry
 resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
@@ -18,7 +17,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   security_group_ids  = [aws_security_group.vpc_endpoint.id]
 }
 
-# Endpoint para S3
+# Endpoint Gateway para S3
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.s3"
@@ -26,15 +25,15 @@ resource "aws_vpc_endpoint" "s3" {
   route_table_ids   = [aws_route_table.private.id]
 }
 
-# Security Group para Endpoints
+# Security Group para VPC Endpoints
 resource "aws_security_group" "vpc_endpoint" {
   name   = "${var.project_name}-vpc-endpoint-sg"
   vpc_id = aws_vpc.main.id
 
   ingress {
-    from_port       = 443
-    to_port         = 443
-    protocol        = "tcp"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = [aws_vpc.main.cidr_block]
   }
 

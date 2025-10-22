@@ -1,16 +1,14 @@
-# backend.tf
-
-# Bucket S3 para armazenar o arquivo de estado do Terraform
+# Bucket S3 para armazenar o estado do Terraform
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "wiresense-terraform-state-782329476114" # <<< NOME ÚNICO GLOBALMENTE! Mude se necessário.
+  bucket = "wiresense-terraform-state-782329476114"  # Nome único global
 
-  # Evita a destruição acidental do bucket de estado
+  # Protege contra destruição acidental
   lifecycle {
     prevent_destroy = true
   }
 }
 
-# Habilita o versionamento para o bucket de estado (forma moderna)
+# Versionamento habilitado para histórico de estado
 resource "aws_s3_bucket_versioning" "terraform_state_versioning" {
   bucket = aws_s3_bucket.terraform_state.id
   versioning_configuration {
@@ -18,7 +16,7 @@ resource "aws_s3_bucket_versioning" "terraform_state_versioning" {
   }
 }
 
-# Configura a criptografia do lado do servidor para o bucket (forma moderna)
+# Criptografia SSE padrão do lado do servidor
 resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state_encryption" {
   bucket = aws_s3_bucket.terraform_state.id
 
@@ -29,10 +27,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state_e
   }
 }
 
-# Tabela DynamoDB para travamento do estado (state locking)
+# Tabela DynamoDB para locks do Terraform (state locking)
 resource "aws_dynamodb_table" "terraform_locks" {
   name         = "wiresense-terraform-locks"
-  billing_mode   = "PAY_PER_REQUEST"
+  billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
 
   attribute {
@@ -44,4 +42,3 @@ resource "aws_dynamodb_table" "terraform_locks" {
     Name = "Terraform State Locks"
   }
 }
-

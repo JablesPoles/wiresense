@@ -1,3 +1,4 @@
+# EFS principal para dados do InfluxDB
 resource "aws_efs_file_system" "influxdb_data" {
   creation_token = "${var.project_name}-influxdb-data"
   tags = {
@@ -5,8 +6,10 @@ resource "aws_efs_file_system" "influxdb_data" {
   }
 }
 
+# Access Point do EFS para InfluxDB
 resource "aws_efs_access_point" "influxdb" {
   file_system_id = aws_efs_file_system.influxdb_data.id
+
   posix_user {
     uid = 1000
     gid = 1000
@@ -26,6 +29,7 @@ resource "aws_efs_access_point" "influxdb" {
   }
 }
 
+# Mount Targets do EFS nas subnets privadas
 resource "aws_efs_mount_target" "mount_private_a" {
   file_system_id  = aws_efs_file_system.influxdb_data.id
   subnet_id       = aws_subnet.private_a.id
@@ -38,11 +42,13 @@ resource "aws_efs_mount_target" "mount_private_b" {
   security_groups = [aws_security_group.efs.id]
 }
 
+# Security Group do EFS para NFS
 resource "aws_security_group" "efs" {
   name        = "${var.project_name}-efs-sg"
   description = "Permite acesso NFS para o EFS"
   vpc_id      = aws_vpc.main.id
 
+  # Permite tráfego de saída para qualquer destino (necessário para updates e snapshots)
   egress {
     from_port   = 0
     to_port     = 0
