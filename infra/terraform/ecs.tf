@@ -9,14 +9,6 @@ resource "aws_security_group" "ecs_tasks" {
   description = "Permite que tasks Fargate puxem imagens do ECR/S3 e se comuniquem internamente"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description = "Allow HTTP from ALB"
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
   # Comunicação interna entre tasks
   ingress {
     from_port = 0
