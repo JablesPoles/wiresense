@@ -60,10 +60,10 @@ def handler(event, context):
             "Access-Control-Allow-Methods": "OPTIONS,GET"
         }
 
-        # --- LÓGICA DE CONSULTA (COM CORREÇÃO FINAL NO 'HISTORY') ---
+        # --- LÓGICA DE CONSULTA ---
 
         if query_type == 'latest' or query_type == 'range':
-            # Mantém a lógica para tempo real
+            # Mantém a lógica para tempo real que já funciona
             time_range = '-5m' if query_type == 'latest' else query_params.get('range', '-5m')
             
             flux_query = f'''
@@ -111,33 +111,43 @@ def handler(event, context):
             period = query_params.get('period', 'daily')
             limit = int(query_params.get('limit', 7))
             
-            range_duration = "7d"
-            if period == 'monthly':
-                range_duration = "6mo" # Ajuste para 6 meses
+            # ▼▼▼ CONSULTA SIMPLIFICADA ▼▼▼
+            # Busca os dados diários brutos (já agregados pela Task)
+            # de um período suficiente para cobrir o limite desejado.
+            range_duration = "-30d" if period == 'daily' else "-12mo" # Busca um período maior
 
-            # ▼▼▼ ESTA É A CONSULTA CORRIGIDA E SIMPLIFICADA ▼▼▼
-            # Ela busca os dados diários e depois agrupa para o caso mensal.
             flux_query = f'''
-                import "timezone"
-                option location = timezone.location(name: "America/Sao_Paulo")
-                
                 from(bucket: "{longterm_bucket}")
-                  |> range(start: -{range_duration})
+                  |> range(start: {range_duration})
                   |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
-                  // Agrupa por dia, pegando o último valor (o total consolidado do dia)
-                  |> aggregateWindow(every: 1d, fn: last, createEmpty: false, location: location) 
-                  |> map(fn: (r) => ({{ "x": r._time, "y": r._value }}))
+                  // Apenas seleciona os campos necessários para o frontend
+                  |> keep(columns: ["_time", "_value"]) 
+                  |> rename(columns: {{ _time: "x", _value: "y" }}) // Renomeia para {x, y}
+                  |> sort(columns: ["x"]) // Garante a ordem
             '''
-            # Para o mensal, adicionamos uma agregação extra
-            if period == 'monthly':
-                flux_query += f' |> aggregateWindow(every: 1mo, fn: sum, createEmpty: false, location: location) |> map(fn: (r) => ({{ "x": r._time, "y": r._value }}))'
-
-            flux_query += f' |> sort(columns: ["x"]) |> limit(n: {limit})'
-            # ▲▲▲ FIM DA CONSULTA CORRIGIDA ▲▲▲
+            # ▲▲▲ FIM DA CONSULTA SIMPLIFICADA ▲▲▲
 
             print(f"Executando query de histórico ({period}): {flux_query}") # Log para depuração
             raw_results = query_influx(flux_query, org)
-            results = raw_results # A query já formata os dados
+            
+            # Para mensal, fazemos a agregação aqui no Python (mais confiável)
+            if period == 'monthly':
+                monthly_sum = {}
+                for point in raw_results:
+                    month_key = point['x'][:7] # Pega 'YYYY-MM'
+                    if month_key not in monthly_sum:
+                        # Usa o primeiro dia do mês como timestamp representativo
+                        monthly_sum[month_key] = {"x": f"{month_key}-01T00:00:00Z", "y": 0.0} 
+                    
+                    y_value = point.get('y') or 0.0 # Trata valores nulos
+                    monthly_sum[month_key]["y"] += y_value
+                
+                # Pega os últimos 'limit' meses e ordena
+                sorted_months = sorted(monthly_sum.values(), key=lambda item: item['x'], reverse=True)
+                results = sorted(sorted_months[:limit], key=lambda item: item['x'])
+            else: # daily
+                 # Pega os últimos 'limit' dias
+                results = raw_results[-limit:] 
 
         else:
              return { "statusCode": 400, "headers": cors_headers, "body": json.dumps({"error": "Tipo de query inválido"}) }
@@ -151,4 +161,3 @@ def handler(event, context):
     except Exception as e:
         print(f"Erro no handler: {e}")
         return { "statusCode": 500, "headers": { "Access-Control-Allow-Origin": "*" }, "body": json.dumps({"error": str(e)}) }
-
