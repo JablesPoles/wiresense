@@ -28,13 +28,13 @@ resource "aws_efs_access_point" "influxdb" {
 
 resource "aws_efs_mount_target" "mount_private_a" {
   file_system_id  = aws_efs_file_system.influxdb_data.id
-  subnet_id       = aws_subnet.public_a.id
+  subnet_id       = aws_subnet.private_a.id
   security_groups = [aws_security_group.efs.id]
 }
 
 resource "aws_efs_mount_target" "mount_private_b" {
   file_system_id  = aws_efs_file_system.influxdb_data.id
-  subnet_id       = aws_subnet.public_b.id
+  subnet_id       = aws_subnet.private_b.id
   security_groups = [aws_security_group.efs.id]
 }
 
