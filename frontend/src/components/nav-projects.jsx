@@ -6,7 +6,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -15,12 +16,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
-export function NavProjects({
-  projects
-}) {
-  const { isMobile } = useSidebar()
+// Lista de projetos
+export function NavProjects({ projects }) {
+  const { isMobile } = useSidebar();
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -34,6 +34,8 @@ export function NavProjects({
                 <span>{item.name}</span>
               </a>
             </SidebarMenuButton>
+
+            {/* Menu dropdown do projeto */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuAction showOnHover>
@@ -41,10 +43,12 @@ export function NavProjects({
                   <span className="sr-only">More</span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
+
               <DropdownMenuContent
                 className="w-48"
                 side={isMobile ? "bottom" : "right"}
-                align={isMobile ? "end" : "start"}>
+                align={isMobile ? "end" : "start"}
+              >
                 <DropdownMenuItem>
                   <Folder className="text-muted-foreground" />
                   <span>View Project</span>
@@ -62,6 +66,8 @@ export function NavProjects({
             </DropdownMenu>
           </SidebarMenuItem>
         ))}
+
+        {/* Item de menu "More" */}
         <SidebarMenuItem>
           <SidebarMenuButton>
             <MoreHorizontal />

@@ -1,11 +1,9 @@
-import { Search } from "lucide-react"
+import { Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { SidebarInput } from "@/components/ui/sidebar";
 
-import { Label } from "@/components/ui/label"
-import { SidebarInput } from "@/components/ui/sidebar"
-
-export function SearchForm({
-  ...props
-}) {
+// Formulário de busca no sidebar
+export function SearchForm({ ...props }) {
   return (
     <form {...props}>
       <div className="relative">
@@ -13,8 +11,7 @@ export function SearchForm({
           Search
         </Label>
         <SidebarInput id="search" placeholder="Type to search..." className="h-8 pl-7" />
-        <Search
-          className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 select-none opacity-50" />
+        <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 select-none opacity-50" />
       </div>
     </form>
   );

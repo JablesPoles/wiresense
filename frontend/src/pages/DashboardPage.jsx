@@ -14,9 +14,11 @@ import {
 } from '../services/apiService';
 
 const DashboardPage = () => {
+  // Pegando configurações do usuário
   const { voltage, tarifaKwh, moeda, setIsSettingsOpen } = useSettings(); 
   const [needsAttention, setNeedsAttention] = useState(false);
 
+  // Estados para dados em tempo real e históricos
   const [current, setCurrent] = useState(null);
   const [powerInWatts, setPowerInWatts] = useState(null);
   const [todaysEnergy, setTodaysEnergy] = useState(null);
@@ -25,11 +27,13 @@ const DashboardPage = () => {
   const [monthlyHistory, setMonthlyHistory] = useState([]);
   const [custoHoje, setCustoHoje] = useState(null);
   const [custoMes, setCustoMes] = useState(null);
-  const [realtimeData, setRealtimeData] = useState([]); // Estado centralizado para dados de tempo real
+  const [realtimeData, setRealtimeData] = useState([]); // Centraliza dados de tempo real
 
+  // Símbolo da moeda
   const currencySymbols = { 'BRL': 'R$', 'USD': '$', 'EUR': '€' };
   const symbol = currencySymbols[moeda] || '$';
 
+  // Verifica se a voltagem foi configurada
   useEffect(() => {
     const voltageIsConfigured = localStorage.getItem('user_voltage');
     if (!voltageIsConfigured) {
@@ -42,7 +46,7 @@ const DashboardPage = () => {
     setNeedsAttention(false); 
   }
 
-  // Efeito para buscar dados de tempo real (para cards e gráficos)
+  // Buscar dados de tempo real a cada 5 segundos
   useEffect(() => {
     const fetchRealtime = async () => {
       const latest = await getLatestDataPoint();
@@ -53,11 +57,11 @@ const DashboardPage = () => {
     };
 
     fetchRealtime();
-    const interval = setInterval(fetchRealtime, 5000); // Intervalo mais razoável
+    const interval = setInterval(fetchRealtime, 5000);
     return () => clearInterval(interval);
   }, []);
   
-  // Efeito para buscar resumos e históricos
+  // Buscar resumos e históricos a cada 5 minutos
   useEffect(() => {
     const fetchAggregates = async () => {
       const summary = await getEnergySummary();
@@ -75,7 +79,7 @@ const DashboardPage = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Efeito para calcular potência
+  // Calcula potência em watts
   useEffect(() => {
     if (current !== null && voltage !== null) {
       setPowerInWatts(current * voltage);
@@ -84,7 +88,7 @@ const DashboardPage = () => {
     }
   }, [current, voltage]);
 
-  // Efeito para calcular custos
+  // Calcula custos com base na tarifa
   useEffect(() => {
     if (todaysEnergy !== null && tarifaKwh) {
       setCustoHoje((todaysEnergy * tarifaKwh).toFixed(2));
@@ -96,6 +100,7 @@ const DashboardPage = () => {
 
   return (
     <div className="p-4 sm:p-6">
+      {/* Cabeçalho com alerta e botão de configurações */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
         <div className="flex items-center gap-3">
@@ -106,7 +111,7 @@ const DashboardPage = () => {
             </div>
           )}
           <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-700/50">
-             <span className="text-sm font-bold text-white">{voltage}V</span>
+            <span className="text-sm font-bold text-white">{voltage}V</span>
             <button 
               onClick={openSettings}
               className="p-1 rounded-full text-gray-400 hover:bg-gray-600 hover:text-white transition-colors"
@@ -118,6 +123,7 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      {/* Cards de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <DataCard title="Potência Instantânea" value={powerInWatts?.toFixed(0) ?? '...'} unit="W" />
         <DataCard title="Corrente Atual" value={current?.toFixed(1) ?? '...'} unit="A" />
@@ -137,6 +143,7 @@ const DashboardPage = () => {
         />
       </div>
       
+      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CurrentRealtimeChart data={realtimeData} />
         <RealtimePowerChart voltage={voltage} data={realtimeData} />

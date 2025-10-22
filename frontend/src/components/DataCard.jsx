@@ -1,16 +1,19 @@
 import PropTypes from 'prop-types';
 
+// Componente de cartão de dados
 export function DataCard({ title, value, unit, cost, currencySymbol }) {
   return (
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg text-white">
+      {/* Título do cartão */}
       <h3 className="text-sm font-medium text-gray-400">{title}</h3>
+
+      {/* Valor principal com unidade */}
       <div className="flex items-baseline gap-2 mt-2">
-        <p className="text-3xl font-bold">
-          {value}
-        </p>
+        <p className="text-3xl font-bold">{value}</p>
         <span className="text-xl text-gray-300">{unit}</span>
       </div>
-      
+
+      {/* Exibe custo se fornecido */}
       {cost && currencySymbol && (
         <p className="text-green-400 text-md font-semibold mt-1">
           {currencySymbol} {cost}

@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
+/**
+ * Componente para seleção da voltagem da rede elétrica.
+ * Permite escolher valores padrão ou customizados.
+ */
 export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
   const standardVoltages = [110, 127, 220];
   const isCustom = !standardVoltages.includes(selectedVoltage);
 
-  // Estados locais APENAS para controlar a interface (UI)
+  // Estados locais apenas para controlar a interface
   const [selectorValue, setSelectorValue] = useState(isCustom ? 'custom' : selectedVoltage);
   const [customValue, setCustomValue] = useState(isCustom ? selectedVoltage : '');
 
@@ -20,6 +24,7 @@ export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
     }
   }, [selectedVoltage]);
 
+  // Quando o usuário altera a seleção
   const handleSelectChange = (e) => {
     const value = e.target.value;
     setSelectorValue(value);
@@ -28,6 +33,7 @@ export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
     }
   };
 
+  // Quando o usuário digita um valor customizado
   const handleCustomInputChange = (e) => {
     const value = e.target.value;
     setCustomValue(value);
@@ -40,6 +46,7 @@ export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
         Selecione a Voltagem da Rede
       </label>
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        {/* Select padrão */}
         <select
           id="voltage-selector"
           value={selectorValue}
@@ -52,6 +59,7 @@ export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
           <option value="custom">Customizada...</option>
         </select>
 
+        {/* Input customizado */}
         {selectorValue === 'custom' && (
           <input
             type="number"

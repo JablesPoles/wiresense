@@ -1,3 +1,6 @@
+/**
+ * Componente wrapper para o conteúdo principal da página
+ */
 const PageContent = ({ children }) => {
   return (
     <main className="flex-1 p-8 overflow-y-auto">
@@ -6,4 +9,4 @@ const PageContent = ({ children }) => {
   );
 };
 
-export default PageContent;
+export default PageContent

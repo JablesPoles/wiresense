@@ -16,9 +16,9 @@ function AppContent() {
   
   return (
     <>
-      <SettingsModal /> 
+      <SettingsModal /> {/* Modal de configurações global */}
       <MainLayout>
-        <DashboardPage />
+        <DashboardPage /> {/* Página principal do dashboard */}
       </MainLayout>
       {showTutorial && <Tutorial onComplete={handleTutorialComplete} />}
     </>

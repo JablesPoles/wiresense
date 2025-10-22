@@ -1,33 +1,33 @@
 import * as React from "react"; 
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
+/**
+ * Layout principal da aplicação, contendo sidebar e header.
+ */
 const MainLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
 
-  return (
-    <div className="[--header-height:calc(theme(spacing.14))]">
-      <SidebarProvider 
+  return (
+    <div className="[--header-height:calc(theme(spacing.14))]">
+      <SidebarProvider 
         className="flex h-screen flex-col"
         open={isSidebarOpen}
         onOpenChange={setIsSidebarOpen}
       >
-        <SiteHeader />
-        <div className="flex flex-1 overflow-hidden">
-          <AppSidebar />
-          <SidebarInset>
-            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-              {children}
-            </main>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
-    </div>
-  );
+        <SiteHeader />
+        <div className="flex flex-1 overflow-hidden">
+          <AppSidebar />
+          <SidebarInset>
+            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+              {children}
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    </div>
+  );
 };
 
 export default MainLayout;
