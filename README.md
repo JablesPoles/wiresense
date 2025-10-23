@@ -132,14 +132,15 @@ A arquitetura do WireSense foi projetada para operar de forma escalável, segura
                            |   - longterm bucket         |
                            +-----------------------------+
 
-Other infra components (auxiliary):
-- S3 bucket -> frontend static files (origin of CloudFront)
-- CloudWatch -> logs/metrics for Lambdas & ECS (alarms)
-- SNS -> alarms topic (email subscriptions)
-- Secrets Manager -> stores INFLUXDB credentials (used by both Lambdas and ECS)
-- ECR/ECS -> hosts InfluxDB service (with EFS for persistent storage)
-- VPC Endpoints / Security Groups / NAT / Subnets -> network & isolation
-- Terraform state stored in S3 with DynamoDB locking (terraform_state / locks)
+Outros componentes de infraestrutura (auxiliares):
+
+Bucket S3 -> arquivos estáticos do frontend (origem para o CloudFront)
+CloudWatch -> logs/métricas para Lambdas e ECS (alarmes)
+SNS -> tópico de alarmes (inscrições por e-mail)
+Secrets Manager -> armazena credenciais do INFLUXDB (usado tanto por Lambdas quanto pelo ECS)
+ECR/ECS -> hospeda o serviço InfluxDB (com EFS para armazenamento persistente)
+VPC Endpoints / Security Groups / NAT / Subnets -> rede e isolamento
+Estado do Terraform armazenado no S3 com bloqueio (locking) via DynamoDB (terraform_state / locks)
 
 ---
 
