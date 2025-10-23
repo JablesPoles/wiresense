@@ -1,6 +1,7 @@
 # Bucket S3 para arquivos estáticos do frontend
 resource "aws_s3_bucket" "frontend_bucket" {
   bucket = "wiresense-frontend-assets-${data.aws_caller_identity.current.account_id}"
+  force_destroy = true
   tags = {
     Name = "${var.project_name}-frontend-assets"
   }

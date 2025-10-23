@@ -1,6 +1,7 @@
 # Repositórios ECR para imagens de containers
 resource "aws_ecr_repository" "wiresense_frontend" {
   name                 = "wiresense/frontend"
+  force_delete = true
   image_tag_mutability = "MUTABLE"
 }
 
