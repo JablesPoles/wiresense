@@ -13,14 +13,33 @@ const ReportsPage = () => {
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Print-only stylesheet can be added or just use media queries */}
+            {/* Print-specific styles */}
             <style>{`
-                @media print {
-                    .no-print { display: none !important; }
-                    .print-only { display: block !important; }
-                    body { background: white; color: black; }
-                    .card { border: 1px solid #ddd; box-shadow: none; }
-                }
-             `}</style>
+        @media print {
+          body {
+            background-color: white !important;
+            color: black !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+           /* Hide fixed backgrounds from MainLayout */
+          div[class*="fixed inset-0"] {
+            display: none !important;
+          }
+          /* Ensure charts are visible */
+          .apexcharts-canvas {
+            filter: none !important;
+          }
+           /* Ensure cards have borders */
+          .border {
+            border: 1px solid #ddd !important;
+          }
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+          .card { border: 1px solid #ddd; box-shadow: none; }
+        }
+      `}</style>
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
                 <div>

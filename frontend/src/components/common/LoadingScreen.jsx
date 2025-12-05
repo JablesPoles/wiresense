@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Zap } from 'lucide-react';
 
 const LoadingScreen = () => {
     return (
@@ -26,7 +27,7 @@ const LoadingScreen = () => {
                     {/* Logo Text/Icon */}
                     <div className="bg-card w-24 h-24 rounded-2xl border border-primary/50 flex items-center justify-center shadow-[0_0_30px_-5px_hsl(var(--primary))] relative overflow-hidden backdrop-blur-xl">
                         <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent" />
-                        <span className="text-4xl font-bold bg-gradient-to-br from-white to-primary bg-clip-text text-transparent">W</span>
+                        <Zap size={48} className="text-primary fill-primary/20 animate-pulse" />
                     </div>
                 </motion.div>
 

@@ -61,7 +61,7 @@ export const Sidebar = () => {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 p-4 space-y-2">
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-hide">
               {links.map((link) => (
                 <Link
                   key={link.path}
@@ -69,7 +69,7 @@ export const Sidebar = () => {
                   onClick={() => setIsOpen(false)}
                   title={isCollapsed ? link.name : ""}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors relative overflow-hidden group",
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors relative overflow-hidden group shrink-0",
                     isActive(link.path)
                       ? "text-primary-foreground bg-primary shadow-lg shadow-primary/20"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",

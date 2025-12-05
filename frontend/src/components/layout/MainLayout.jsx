@@ -13,12 +13,12 @@ const MainLayout = ({ children }) => {
         {/* Background gradient effects */}
         <div className="fixed inset-0 z-0 pointer-events-none">
           {/* Subtle Grid Pattern */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5"></div>
-          <div className="absolute inset-0 bg-grid-white/[0.02]" style={{ backgroundSize: '30px 30px' }}></div>
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
+          <div className="absolute inset-0 bg-grid-white/[0.05]" style={{ backgroundSize: '30px 30px' }}></div>
 
           {/* Ambient Glows */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px] opacity-20" />
-          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[100px] opacity-20" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/30 rounded-full blur-[120px] opacity-30" />
+          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/30 rounded-full blur-[120px] opacity-30" />
         </div>
       </main>
     </div>
