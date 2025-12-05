@@ -31,7 +31,7 @@ export const SettingsProvider = ({ children }) => {
     setVoltage(numericVoltage);
     localStorage.setItem('user_voltage', numericVoltage);
   };
-  
+
   // Função para atualizar tarifa kWh e persistir
   const updateTarifaKwh = (newTarifa) => {
     const numericTarifa = Number(newTarifa);
@@ -45,9 +45,37 @@ export const SettingsProvider = ({ children }) => {
     setMoeda(newMoeda);
     localStorage.setItem('user_moeda', newMoeda);
   };
-  
+
+  // Estado do orçamento mensal, inicializando do localStorage
+  const [budgetLimit, setBudgetLimit] = useState(() => {
+    const saved = localStorage.getItem('user_budget_limit');
+    return saved ? Number(saved) : 0; // 0 = sem limite
+  });
+
+  const updateBudgetLimit = (newLimit) => {
+    const val = Number(newLimit);
+    if (!isNaN(val)) {
+      setBudgetLimit(val);
+      localStorage.setItem('user_budget_limit', val);
+    }
+  };
+
+  // Estado de carregamento
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Initial load effect
+  React.useEffect(() => {
+    // Simula uma pequena verificação de sistema para garantir que tudo está ok
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800); // 800ms loading sequence
+
+    return () => clearTimeout(timer);
+  }, []);
+
   // Objeto de valor do contexto
   const value = {
+    isLoading, // Expose loading state
     isSettingsOpen,
     setIsSettingsOpen,
     voltage,
@@ -56,6 +84,8 @@ export const SettingsProvider = ({ children }) => {
     updateTarifaKwh,
     moeda,
     updateMoeda,
+    budgetLimit,
+    updateBudgetLimit,
   };
 
   return (

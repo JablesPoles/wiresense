@@ -1,38 +1,38 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from 'framer-motion'; 
-import { X } from 'lucide-react'; 
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ChevronRight, ChevronLeft, Check, Smile, Plug, Wifi, Settings, Activity, Zap } from 'lucide-react';
 
-// Passos do tutorial, cada um com título, descrição e imagem
+// Passos do tutorial, cada um com título, descrição e ícone
 const tutorialSteps = [
   {
     title: "Passo 1: Bem-vindo ao WireSense!",
     description: "Olá! Vamos te guiar passo a passo na configuração inicial do seu dispositivo para você começar a usar o quanto antes.",
-    image: '/images/step1-welcome.svg',
+    icon: Smile,
   },
   {
     title: "Passo 2: Ligue o Dispositivo",
     description: "Para começar, conecte seu WireSense a uma fonte de energia usando o cabo USB fornecido.",
-    image: '/images/step2-connect.svg', 
+    icon: Plug,
   },
   {
     title: "Passo 3: Conecte-se ao WireSense",
     description: "Agora, no seu celular ou computador, abra as configurações de Wi-Fi. Procure pela rede chamada 'WireSense-AP' e conecte-se a ela.",
-    image: '/images/step3-APMode.svg',
+    icon: Wifi,
   },
   {
     title: "Passo 4: Configure sua rede Wi-Fi",
     description: "Após conectar, uma página de configuração deve abrir automaticamente. Se não abrir, digite 192.168.4.1 no seu navegador para definir a qual rede Wi-Fi o seu WireSense irá se conectar.",
-    image: '/images/step4-WiFi.svg', 
+    icon: Settings,
   },
   {
     title: "Passo 5: Comece a Medir",
     description: "Com cuidado, encaixe o alicate amperímetro ao redor de um dos fios do aparelho que deseja medir. A medição aparecerá na tela do WireSense.",
-    image: '/images/step5-finalstep.svg', 
+    icon: Activity,
   },
   {
     title: "Tudo Pronto!",
     description: "Parabéns! Seu WireSense está configurado e pronto para uso. Aproveite todas as funcionalidades.",
-    image: '/images/step6-congratulations.svg',
+    icon: Zap,
   },
 ];
 
@@ -41,7 +41,7 @@ const Tutorial = ({ onComplete }) => {
 
   // Avança para o próximo passo
   const handleNext = () => {
-    if(currentStep < tutorialSteps.length){
+    if (currentStep < tutorialSteps.length) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -57,33 +57,45 @@ const Tutorial = ({ onComplete }) => {
   const stepContent = tutorialSteps[currentStep];
 
   return (
-    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full flex flex-col items-center relative">
-        
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-card border border-border rounded-xl shadow-2xl p-8 max-w-lg w-full flex flex-col items-center relative overflow-hidden"
+      >
+        {/* Background glow */}
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-32 h-32 bg-secondary/20 rounded-full blur-3xl pointer-events-none" />
+
         {/* Botão de fechar tutorial */}
         <button
           onClick={onComplete}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
           aria-label="Fechar tutorial"
         >
-          <X className="h-6 w-6" />
+          <X className="h-5 w-5" />
         </button>
 
         {/* Animação da transição entre passos */}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
-            className="text-center flex flex-col items-center"
-            initial={{ opacity: 0, x: 50 }}
+            className="text-center flex flex-col items-center w-full"
+            initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
           >
-            <img src={stepContent.image} alt={stepContent.title} className="w-48 h-48 mb-6" />
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+            <div className="w-32 h-32 mb-8 bg-muted/30 rounded-full flex items-center justify-center border border-primary/20 shadow-inner">
+              {/* Render Icon Component */}
+              <stepContent.icon size={64} className="text-primary animate-pulse" />
+            </div>
+
+            <h2 className="text-2xl font-bold text-foreground mb-3">
               {stepContent.title}
             </h2>
-            <p className="text-gray-600 dark:text-gray-300">
+            <p className="text-muted-foreground leading-relaxed">
               {stepContent.description}
             </p>
           </motion.div>
@@ -94,35 +106,38 @@ const Tutorial = ({ onComplete }) => {
           {tutorialSteps.map((_, index) => (
             <div
               key={index}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                currentStep === index ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
-              }`}
+              className={`h-1.5 rounded-full transition-all duration-300 ${currentStep === index ? 'w-8 bg-primary shadow-lg shadow-primary/50' : 'w-2 bg-muted'
+                }`}
             />
           ))}
         </div>
 
         {/* Botões de navegação */}
-        <div className="flex justify-between w-full">
-          {currentStep > 0 ? (
-            <button
-              onClick={handleBack}
-              className="px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-            >
-              Voltar
-            </button>
-          ) : (
-            <div /> // Placeholder para manter layout
-          )}
-          
+        <div className="flex justify-between w-full items-center pt-4 border-t border-border mt-auto">
+          <button
+            onClick={handleBack}
+            disabled={currentStep === 0}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${currentStep === 0
+              ? 'opacity-0 pointer-events-none'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+          >
+            <ChevronLeft size={16} /> Voltar
+          </button>
+
           <button
             onClick={isLastStep ? onComplete : handleNext}
-            className="px-6 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 transition-colors"
+            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-primary/20"
           >
-            {isLastStep ? 'Concluir' : 'Próximo'}
+            {isLastStep ? (
+              <>Concluir <Check size={16} /></>
+            ) : (
+              <>Próximo <ChevronRight size={16} /></>
+            )}
           </button>
         </div>
 
-      </div>
+      </motion.div>
     </div>
   );
 };

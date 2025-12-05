@@ -12,15 +12,15 @@ export const DataCard = ({ title, value, unit, cost, currencySymbol }) => {
       <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
       <div className="relative z-10">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">
+        <h3 className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2 break-words">
           {title}
         </h3>
 
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-foreground tracking-tight">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
             {value}
           </span>
-          <span className="text-sm font-semibold text-primary">{unit}</span>
+          <span className="text-xs sm:text-sm font-semibold text-primary">{unit}</span>
         </div>
 
         {cost && (

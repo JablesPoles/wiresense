@@ -67,7 +67,20 @@ export const EnergyHistoryChart = ({ data, type = 'daily', unit = 'kWh' }) => {
             x: { show: true },
             y: { formatter: val => `${val} ${unit}` }
         },
-        colors: ['#8b5cf6']
+        colors: ['#8b5cf6'],
+        responsive: [{
+            breakpoint: 640,
+            options: {
+                xaxis: {
+                    tickAmount: 5, // Reduce ticks on mobile
+                    labels: {
+                        rotate: -45,
+                        rotateAlways: false,
+                        style: { fontSize: '10px' }
+                    }
+                }
+            }
+        }]
     };
 
     const series = [{

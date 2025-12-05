@@ -1,141 +1,177 @@
 import React, { useState, useEffect } from 'react';
-import { EnergyHistoryChart } from '../components/charts/EnergyHistoryChart';
-import { getDailyEnergyHistory, getMonthlyEnergyHistory } from '../services/apiService';
-import { ArrowDownToLine, Calendar, FileText } from 'lucide-react';
+import { Download, Calendar } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import { EnergyHistoryChart } from '../components/charts/EnergyHistoryChart';
+import { PeakLoadChart } from '../components/charts/PeakLoadChart';
+import { CostChart } from '../components/charts/CostChart';
+import { TimeRangeSelector } from '../components/common/TimeRangeSelector';
+import {
+    getDailyEnergyHistory,
+    getMonthlyEnergyHistory,
+    getPeakLoadHistory
+} from '../services/apiService';
 
 const HistoryPage = () => {
-    const [period, setPeriod] = useState('daily'); // 'daily' | 'monthly'
-    const [historyData, setHistoryData] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
     const { tarifaKwh, moeda } = useSettings();
+    const currency = moeda === 'BRL' ? 'R$' : (moeda === 'EUR' ? '€' : '$');
 
-    const currencySymbol = { 'BRL': 'R$', 'USD': '$', 'EUR': '€' }[moeda] || '$';
+    // View state
+    const [viewMode, setViewMode] = useState('daily'); // 'daily' | 'monthly'
+    const [timeRange, setTimeRange] = useState('7d'); // '7d', '30d' | '6m', '1y'
+
+    // Data state
+    const [consumptionData, setConsumptionData] = useState([]);
+    const [peakData, setPeakData] = useState([]);
+    const [costData, setCostData] = useState([]);
+
+    // Update time range options based on view mode
+    const rangeOptions = viewMode === 'daily'
+        ? [{ label: '7 Dias', value: '7d' }, { label: '30 Dias', value: '30d' }]
+        : [{ label: '6 Meses', value: '6m' }, { label: '12 Meses', value: '1y' }];
+
+    // Reset range when mode changes
+    const handleModeChange = (mode) => {
+        setViewMode(mode);
+        setTimeRange(mode === 'daily' ? '7d' : '6m');
+    };
 
     useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true);
-            try {
-                let data = [];
-                if (period === 'daily') {
-                    // Fetch last 15 days for better history view
-                    data = await getDailyEnergyHistory(15);
-                } else {
-                    data = await getMonthlyEnergyHistory(12);
-                }
+        const fetchData = async () => {
+            let limit = 7;
+            if (timeRange === '30d') limit = 30;
+            if (timeRange === '6m') limit = 6;
+            if (timeRange === '1y') limit = 12;
 
-                // Format data for chart { x: dateString, y: value }
-                // API returns { x: "2023-10-01", y: 12.5 }
-                setHistoryData(data || []);
-            } catch (error) {
-                console.error("Failed to load history", error);
-            } finally {
-                setIsLoading(false);
+            let consumption = [];
+            let peaks = [];
+
+            if (viewMode === 'daily') {
+                consumption = await getDailyEnergyHistory(limit);
+                peaks = await getPeakLoadHistory(limit);
+            } else {
+                consumption = await getMonthlyEnergyHistory(limit);
+                // For monthly peaks, we could add a method or just approximate/mock for now
+                // Let's use the same peak history function for simplicity or mock it
+                peaks = await getPeakLoadHistory(limit);
+            }
+
+            setConsumptionData(consumption || []);
+            setPeakData(peaks || []);
+
+            // Calculate costs
+            if (consumption && tarifaKwh) {
+                const costs = consumption.map(item => ({
+                    x: item.x,
+                    y: parseFloat((item.y * tarifaKwh).toFixed(2))
+                }));
+                setCostData(costs);
             }
         };
 
-        loadData();
-    }, [period]);
+        fetchData();
+    }, [viewMode, timeRange, tarifaKwh]);
 
-    const calculateCost = (kwh) => {
-        if (!tarifaKwh) return '-';
-        return (kwh * tarifaKwh).toFixed(2);
+    const handleExport = () => {
+        alert("Exportação de CSV será implementada em breve.");
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white">Histórico de Consumo</h1>
-                    <p className="text-muted-foreground">Analise o consumo energético ao longo do tempo.</p>
+                    <p className="text-muted-foreground">
+                        Análise detalhada do consumo e custos ao longo do tempo.
+                    </p>
                 </div>
-
-                {/* Period Toggle */}
-                <div className="flex p-1 bg-secondary/50 rounded-lg border border-border">
+                <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setPeriod('daily')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${period === 'daily'
-                                ? 'bg-primary text-primary-foreground shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground'
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium"
+                    >
+                        <Download size={16} />
+                        Exportar CSV
+                    </button>
+                </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-muted/30 p-2 rounded-lg border border-border">
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => handleModeChange('daily')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'daily' ? 'bg-primary text-white shadow' : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         Diário
                     </button>
                     <button
-                        onClick={() => setPeriod('monthly')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${period === 'monthly'
-                                ? 'bg-primary text-primary-foreground shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground'
+                        onClick={() => handleModeChange('monthly')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'monthly' ? 'bg-primary text-white shadow' : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         Mensal
                     </button>
                 </div>
-            </div>
 
-            {/* Chart Section */}
-            <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <EnergyHistoryChart data={historyData} type={period} />
-            </div>
-
-            {/* Table Section */}
-            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="p-6 border-b border-border flex justify-between items-center">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                        <FileText size={20} className="text-primary" />
-                        Detalhamento
-                    </h3>
-                    <button className="text-sm text-primary hover:underline flex items-center gap-1">
-                        <ArrowDownToLine size={14} /> Exportar CSV
-                    </button>
+                <div className="flex items-center gap-2">
+                    <Calendar size={16} className="text-muted-foreground" />
+                    <TimeRangeSelector
+                        selectedRange={timeRange}
+                        onRangeChange={setTimeRange}
+                        ranges={rangeOptions}
+                    />
                 </div>
+            </div>
 
+            {/* Main Charts Grid */}
+            <div className="grid grid-cols-1 gap-6">
+                <EnergyHistoryChart
+                    data={consumptionData}
+                    type={viewMode}
+                    unit="kWh"
+                />
+                <CostChart
+                    data={costData}
+                    currencySymbol={currency}
+                />
+            </div>
+
+            {/* Secondary Analysis */}
+            <div className="grid grid-cols-1 gap-6">
+                <PeakLoadChart data={peakData} />
+                {/* <HeatmapChart /> */}
+            </div>
+
+            {/* Detailed Table */}
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-border">
+                    <h3 className="text-lg font-semibold">Detalhamento dos Dados</h3>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-secondary/30 text-muted-foreground uppercase text-xs">
+                        <thead className="bg-muted text-muted-foreground uppercase text-xs">
                             <tr>
                                 <th className="px-6 py-3">Data / Período</th>
                                 <th className="px-6 py-3">Consumo (kWh)</th>
-                                <th className="px-6 py-3 text-right">Custo Estimado ({currencySymbol})</th>
+                                <th className="px-6 py-3">Pico de Corrente (A)</th>
+                                <th className="px-6 py-3">Custo Estimado ({currency})</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan="3" className="px-6 py-8 text-center text-muted-foreground">
-                                        Carregando dados...
-                                    </td>
-                                </tr>
-                            ) : historyData.length === 0 ? (
-                                <tr>
-                                    <td colSpan="3" className="px-6 py-8 text-center text-muted-foreground">
-                                        Nenhum dado encontrado para este período.
-                                    </td>
-                                </tr>
-                            ) : (
-                                [...historyData].reverse().map((item, index) => (
+                            {consumptionData.map((item, index) => {
+                                const peak = peakData[index]?.y || '-';
+                                const cost = costData[index]?.y || '-';
+                                return (
                                     <tr key={index} className="hover:bg-muted/50 transition-colors">
-                                        <td className="px-6 py-4 font-medium flex items-center gap-2">
-                                            <Calendar size={14} className="text-muted-foreground" />
-                                            {new Date(item.x).toLocaleDateString('pt-BR',
-                                                period === 'daily'
-                                                    ? { day: '2-digit', month: 'long', year: 'numeric' }
-                                                    : { month: 'long', year: 'numeric', timeZone: 'UTC' } // timeZone UTC to avoid shifting months in table
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-bold mr-2">
-                                                {item.y.toFixed(2)}
-                                            </span>
-                                            <span className="text-muted-foreground">kWh</span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-mono font-medium text-green-400">
-                                            {currencySymbol} {calculateCost(item.y)}
-                                        </td>
+                                        <td className="px-6 py-4 font-medium">{item.x}</td>
+                                        <td className="px-6 py-4">{item.y}</td>
+                                        <td className="px-6 py-4 text-amber-500 font-medium">{peak}</td>
+                                        <td className="px-6 py-4 text-emerald-500 font-mono">{cost}</td>
                                     </tr>
-                                ))
-                            )}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

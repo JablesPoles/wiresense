@@ -12,11 +12,25 @@ import {
   getEnergySummary,
   getDailyEnergyHistory
 } from '../services/apiService';
+import { Skeleton } from '../components/common/Skeleton';
 
 const DashboardPage = () => {
   // Pegando configurações do usuário
-  const { voltage, tarifaKwh, moeda, setIsSettingsOpen } = useSettings();
+  const { voltage, tarifaKwh, moeda, budgetLimit } = useSettings();
   const [needsAttention, setNeedsAttention] = useState(false);
+
+  // Helper for budget progress
+  const getBudgetProgress = () => {
+    if (!budgetLimit || !custoMes) return 0;
+    return Math.min((parseFloat(custoMes) / budgetLimit) * 100, 100);
+  };
+
+  const progressColor = () => {
+    const p = getBudgetProgress();
+    if (p < 70) return 'bg-emerald-500';
+    if (p < 90) return 'bg-amber-500';
+    return 'bg-red-500';
+  };
 
   // Estados para dados em tempo real e históricos
   const [current, setCurrent] = useState(null);
@@ -51,11 +65,11 @@ const DashboardPage = () => {
     };
 
     fetchRealtime();
-    const interval = setInterval(fetchRealtime, 5000);
+    const interval = setInterval(fetchRealtime, 10000); // 10s interval
     return () => clearInterval(interval);
   }, []);
 
-  // Buscar resumos e históricos a cada 5 minutos
+  // Buscar resumos e históricos a cada 10 minutos
   useEffect(() => {
     const fetchAggregates = async () => {
       const summary = await getEnergySummary();
@@ -66,7 +80,7 @@ const DashboardPage = () => {
       setDailyHistory(daily);
     };
     fetchAggregates();
-    const intervalId = setInterval(fetchAggregates, 5 * 60 * 1000);
+    const intervalId = setInterval(fetchAggregates, 10 * 60 * 1000); // 10min interval
     return () => clearInterval(intervalId);
   }, []);
 
@@ -113,28 +127,57 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      {/* Budget Goal Progress */}
+      {budgetLimit > 0 && custoMes !== null && (
+        <div className="bg-card border border-border p-4 rounded-xl flex items-center gap-4 shadow-sm relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-secondary" />
+          <div className="flex-1">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-muted-foreground font-medium">Meta de Orçamento Mensal</span>
+              <span className="font-bold text-foreground">
+                {Math.floor(getBudgetProgress())}% <span className="text-muted-foreground font-normal">({symbol} {custoMes} / {budgetLimit})</span>
+              </span>
+            </div>
+            <div className="h-3 bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full ${progressColor()} transition-all duration-1000 ease-out`}
+                style={{ width: `${getBudgetProgress()}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <DataCard title="Potência Agora" value={powerInWatts?.toFixed(0) ?? '...'} unit="W" />
-        <DataCard title="Corrente" value={current?.toFixed(1) ?? '...'} unit="A" />
+        <DataCard
+          title="Potência Agora"
+          value={powerInWatts !== null ? powerInWatts.toFixed(0) : <Skeleton className="h-8 w-24" />}
+          unit={powerInWatts !== null ? "W" : ""}
+        />
+        <DataCard
+          title="Corrente"
+          value={current !== null ? current.toFixed(1) : <Skeleton className="h-8 w-24" />}
+          unit={current !== null ? "A" : ""}
+        />
         <DataCard
           title="Consumo (Hoje)"
-          value={todaysEnergy?.toFixed(2) ?? '...'}
-          unit="kWh"
+          value={todaysEnergy !== null ? todaysEnergy.toFixed(2) : <Skeleton className="h-8 w-24" />}
+          unit={todaysEnergy !== null ? "kWh" : ""}
           cost={custoHoje ?? '...'}
           currencySymbol={symbol}
         />
         <DataCard
           title="Consumo (Mês)"
-          value={monthlyEnergy?.toFixed(2) ?? '...'}
-          unit="kWh"
+          value={monthlyEnergy !== null ? monthlyEnergy.toFixed(2) : <Skeleton className="h-8 w-24" />}
+          unit={monthlyEnergy !== null ? "kWh" : ""}
           cost={custoMes ?? '...'}
           currencySymbol={symbol}
         />
       </div>
 
       {/* Gráficos em Tempo Real */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <CurrentRealtimeChart data={realtimeData} />
         <RealtimePowerChart voltage={voltage} data={realtimeData} />
       </div>

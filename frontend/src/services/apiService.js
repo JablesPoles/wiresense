@@ -1,69 +1,50 @@
-// URL base da API, usando variável de ambiente definida no Vite
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/data`; 
+import { mockApiService } from './mockApiService';
 
-// Função auxiliar que faz fetch na API e trata erros básicos
-async function fetchData(params = {}) {
-  const url = new URL(API_BASE_URL);
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  // Adiciona parâmetros de query na URL
-  Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-
+// Helper: Try real API, fallback to Mock
+async function fetchWithFallback(endpoint, options = {}, mockMethod) {
   try {
-    // Requisição GET com header para JSON
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json', 
-      },
-    });
+    if (!API_BASE_URL) throw new Error("No API URL");
 
-    // Tratamento de erro caso status não seja 2xx
-    if (!response.ok) {
-      let errorBody = null;
-      try {
-        // Tenta extrair JSON de erro, se houver
-        errorBody = await response.json();
-      } catch (e) { /* Ignora se não for JSON */ }
-      
-      throw new Error(`Erro na API: ${response.status} ${response.statusText} - ${errorBody ? JSON.stringify(errorBody) : 'Sem detalhes'}`);
-    }
+    // Simple check: if we are supposed to be offline/mock, fail fast
+    // For now, we attempt fetch.
+    // Race fetch with a timeout to prevent long hangs on bad connections
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000));
 
-    // Retorna JSON da resposta
+    const response = await Promise.race([
+      fetch(`${API_BASE_URL}/${endpoint}`, options),
+      timeout
+    ]);
+
+    if (!response.ok) throw new Error("API Error");
     return await response.json();
-
   } catch (error) {
-    // Log de erro para debug
-    console.error("Falha ao buscar dados da API:", error);
-
-    // Retorna valores padrão caso a API falhe
-    if (params.type === 'latest') return null; 
-    return [];
+    console.warn(`API unavailable (${endpoint}) - ${error.message}. Switching to Mock Data.`);
+    return await mockMethod();
   }
 }
 
-// Funções públicas que chamam fetchData com parâmetros específicos
+export const getLatestDataPoint = async () => {
+  return await fetchWithFallback('latest', {}, () => mockApiService.getLatestDataPoint());
+};
 
-// Pega o último ponto de dados
-export async function getLatestDataPoint() {
-  return fetchData({ type: 'latest' }); 
-}
+export const getRealtimeData = async (windowSize = '5m') => {
+  return await fetchWithFallback(`data?window=${windowSize}`, {}, () => mockApiService.getRealtimeData(windowSize));
+};
 
-// Pega dados em tempo real de um intervalo definido (ex: 5m)
-export async function getRealtimeData(range = '5m') {
-  return fetchData({ type: 'range', range: `-${range}` });
-}
+export const getEnergySummary = async () => {
+  return await fetchWithFallback('summary', {}, () => mockApiService.getEnergySummary());
+};
 
-// Pega resumo diário/mensal de energia
-export async function getEnergySummary() {
-  return fetchData({ type: 'summary' });
-}
+export const getDailyEnergyHistory = async (limit = 30) => {
+  return await fetchWithFallback(`history/daily?limit=${limit}`, {}, () => mockApiService.getDailyEnergyHistory(limit));
+};
 
-// Histórico diário limitado (padrão 7 dias)
-export async function getDailyEnergyHistory(limit = 7) {
-  return fetchData({ type: 'history', period: 'daily', limit: limit });
-}
+export const getMonthlyEnergyHistory = async (limit = 12) => {
+  return await fetchWithFallback(`history/monthly?limit=${limit}`, {}, () => mockApiService.getMonthlyEnergyHistory(limit));
+};
 
-// Histórico mensal limitado (padrão 6 meses)
-export async function getMonthlyEnergyHistory(limit = 6) {
-  return fetchData({ type: 'history', period: 'monthly', limit: limit });
-}
+export const getPeakLoadHistory = async (limit = 7) => {
+  return await fetchWithFallback(`history/peak?limit=${limit}`, {}, () => mockApiService.getPeakLoadHistory(limit));
+};

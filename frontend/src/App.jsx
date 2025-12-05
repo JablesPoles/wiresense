@@ -5,16 +5,25 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import MainLayout from './components/layout/MainLayout';
 import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
+import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import Tutorial from './pages/TutorialPage';
 
+import LoadingScreen from './components/common/LoadingScreen';
+import { useSettings } from './contexts/SettingsContext';
+
 function AppContent() {
   const { showTutorial, setShowTutorial } = useTutorial();
+  const { isLoading } = useSettings(); // Consume loading state
 
   const handleTutorialComplete = () => {
     localStorage.setItem('tutorialVisto', 'true');
     setShowTutorial(false);
   };
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <BrowserRouter>
@@ -22,6 +31,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
