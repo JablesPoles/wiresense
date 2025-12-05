@@ -1,10 +1,12 @@
 import React from 'react';
-import { TutorialProvider, useTutorial } from './contexts/TutorialContext'; 
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { TutorialProvider, useTutorial } from './contexts/TutorialContext';
 import { SettingsProvider } from './contexts/SettingsContext';
-import { SettingsModal } from './components/layout/SettingsModal'; 
 import MainLayout from './components/layout/MainLayout';
 import DashboardPage from './pages/DashboardPage';
-import Tutorial from './pages/TutorialPage'; 
+import HistoryPage from './pages/HistoryPage';
+import SettingsPage from './pages/SettingsPage';
+import Tutorial from './pages/TutorialPage';
 
 function AppContent() {
   const { showTutorial, setShowTutorial } = useTutorial();
@@ -13,15 +15,19 @@ function AppContent() {
     localStorage.setItem('tutorialVisto', 'true');
     setShowTutorial(false);
   };
-  
+
   return (
-    <>
-      <SettingsModal /> {/* Modal de configurações global */}
+    <BrowserRouter>
       <MainLayout>
-        <DashboardPage /> {/* Página principal do dashboard */}
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </MainLayout>
       {showTutorial && <Tutorial onComplete={handleTutorialComplete} />}
-    </>
+    </BrowserRouter>
   );
 }
 

@@ -2,20 +2,19 @@ import { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import PropTypes from 'prop-types';
 
-// Número máximo de pontos exibidos no gráfico em tempo real
 const MAX_DATA_POINTS = 30;
 
-/**
- * Componente de gráfico de linha mostrando corrente em tempo real.
- */
 export function CurrentRealtimeChart({ data }) {
-  const [series, setSeries] = useState([{ name: 'Corrente (A)', data: [] }]);
+  const [series, setSeries] = useState([{ name: 'Corrente', data: [] }]);
 
-  // Configurações do gráfico ApexCharts
+  // Dynamic color from CSS variable
+  const strokeColor = '#06b6d4'; // Cyan
+
   const [options] = useState({
     theme: { mode: 'dark' },
     chart: {
       id: 'realtime-current',
+      type: 'area', // Area chart looks better for fills
       background: 'transparent',
       animations: {
         enabled: true,
@@ -24,43 +23,60 @@ export function CurrentRealtimeChart({ data }) {
       },
       toolbar: { show: false },
       zoom: { enabled: false },
+      fontFamily: 'inherit',
     },
-    stroke: { curve: 'smooth', width: 2 },
-    markers: { size: 0 },
+    stroke: { curve: 'smooth', width: 3, colors: [strokeColor] },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.1,
+        stops: [0, 100]
+      }
+    },
+    dataLabels: { enabled: false },
     xaxis: {
       type: 'datetime',
       range: 30000,
-      labels: { style: { colors: '#A0AEC0' } },
+      labels: { show: false }, // Cleaner look
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      tooltip: { enabled: false }
     },
     yaxis: {
-      title: { text: 'Amperes (A)', style: { color: '#A0AEC0' } },
+      // title: { text: 'Amperes (A)', style: { color: '#94a3b8' } },
       labels: {
-        style: { colors: '#A0AEC0' },
-        formatter: (val) => val.toFixed(2), // Arredonda para 2 casas decimais
+        style: { colors: '#94a3b8' },
+        formatter: (val) => val.toFixed(1),
       },
     },
-    grid: { borderColor: '#4A5568' },
-    legend: { show: true },
+    grid: {
+      borderColor: '#334155',
+      strokeDashArray: 4,
+      xaxis: { lines: { show: false } }
+    },
+    legend: { show: false }, // Title handles context
+    colors: [strokeColor],
   });
 
-  // Atualiza os dados do gráfico sempre que `data` mudar
   useEffect(() => {
     if (data && data.length > 0) {
       const formattedData = data.map((point) => ({
         x: new Date(point.time).getTime(),
         y: point.current,
       }));
-
-      setSeries([
-        { name: 'Corrente (A)', data: formattedData.slice(-MAX_DATA_POINTS) },
-      ]);
+      setSeries([{ name: 'Corrente', data: formattedData.slice(-MAX_DATA_POINTS) }]);
     }
   }, [data]);
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
-      <h3 className="text-white font-bold mb-4">Corrente em Tempo Real</h3>
-      <ReactApexChart options={options} series={series} type="line" height={350} />
+    <div className="bg-card border border-border p-6 rounded-xl shadow-sm h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-foreground font-semibold text-lg">Corrente em Tempo Real</h3>
+        <span className="text-xs font-mono text-cyan-400 bg-cyan-400/10 px-2 py-1 rounded">Live</span>
+      </div>
+      <ReactApexChart options={options} series={series} type="area" height={250} />
     </div>
   );
 }

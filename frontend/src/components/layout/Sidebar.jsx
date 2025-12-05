@@ -1,78 +1,93 @@
+import { Link, useLocation } from 'react-router-dom';
+import { LayoutDashboard, History, Settings, Menu, X } from 'lucide-react';
 import { useState } from 'react';
-import {
-  ChartBarIcon,
-  Cog6ToothIcon,
-  HomeIcon,
-  SignalIcon,
-  ChevronDoubleLeftIcon,
-  ChevronDoubleRightIcon
-} from '@heroicons/react/24/outline';
+import { cn } from '../../lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
-/**
- * Sidebar lateral da aplicação com opção de recolher/expandir
- */
-const Sidebar = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export const Sidebar = () => {
+  const location = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Alterna entre expandido e recolhido
-  const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+  const links = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
+    { name: 'Histórico', icon: History, path: '/history' },
+    { name: 'Configurações', icon: Settings, path: '/settings' },
+  ];
+
+  const isActive = (path) => location.pathname === path;
 
   return (
-    <div
-      className={`flex flex-col bg-gray-800 text-gray-100 transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
-    >
-      {/* Cabeçalho da Sidebar */}
-      <div className="flex items-center justify-center h-20 border-b border-gray-700 shrink-0">
-        <div className={`text-2xl font-bold ${isCollapsed ? 'hidden' : 'block'}`}>
-          EnergyDash
-        </div>
-        <SignalIcon className={`h-8 w-8 ${isCollapsed ? 'block' : 'hidden'}`} />
-      </div>
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-sidebar-background rounded-md text-sidebar-foreground border border-sidebar-border"
+      >
+        {isOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
 
-      {/* Navegação principal */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        <a href="#" className="flex items-center p-2 space-x-3 rounded-md bg-blue-600 text-white">
-          <HomeIcon className="h-6 w-6" />
-          <span className={isCollapsed ? 'hidden' : ''}>Dashboard</span>
-        </a>
-        <a href="#" className="flex items-center p-2 space-x-3 rounded-md hover:bg-gray-700">
-          <ChartBarIcon className="h-6 w-6" />
-          <span className={isCollapsed ? 'hidden' : ''}>Relatórios</span>
-        </a>
-        <a href="#" className="flex items-center p-2 space-x-3 rounded-md hover:bg-gray-700">
-          <Cog6ToothIcon className="h-6 w-6" />
-          <span className={isCollapsed ? 'hidden' : ''}>Configurações</span>
-        </a>
-      </nav>
+      {/* Sidebar Container */}
+      <AnimatePresence mode="wait">
+        {(isOpen || window.innerWidth >= 1024) && (
+          <motion.div
+            initial={{ x: -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: -280 }}
+            transition={{ type: "spring", damping: 20 }}
+            className={cn(
+              "fixed inset-y-0 left-0 z-40 w-64 bg-sidebar-background border-r border-sidebar-border flex flex-col transform lg:transform-none lg:relative transition-transform duration-300 ease-in-out",
+              isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+            )}
+          >
+            {/* Logo / Header */}
+            <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
+                Wiresense
+              </h1>
+            </div>
 
-      {/* Rodapé com status e botão de recolher */}
-      <div className="px-4 py-6 border-t border-gray-700 space-y-4 shrink-0">
-        {/* Indicador de status online */}
-        <div className="flex items-center p-2 space-x-3">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-          </span>
-          <span className={isCollapsed ? 'hidden' : ''}>Monitor Online</span>
-        </div>
+            {/* Navigation */}
+            <nav className="flex-1 p-4 space-y-2">
+              {links.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors relative overflow-hidden",
+                    isActive(link.path)
+                      ? "text-sidebar-primary-foreground bg-sidebar-primary shadow-lg shadow-sidebar-primary/20"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <link.icon size={20} />
+                  <span>{link.name}</span>
+                  {isActive(link.path) && (
+                    <motion.div
+                      layoutId="active-pill"
+                      className="absolute inset-0 bg-sidebar-primary -z-10"
+                      transition={{ type: "spring", duration: 0.6 }}
+                    />
+                  )}
+                </Link>
+              ))}
+            </nav>
 
-        {/* Botão de recolher/expandir Sidebar */}
-        <button
-          onClick={toggleSidebar}
-          className="w-full flex items-center p-2 space-x-3 rounded-md hover:bg-gray-700"
-        >
-          {isCollapsed ? (
-            <ChevronDoubleRightIcon className="h-6 w-6" />
-          ) : (
-            <ChevronDoubleLeftIcon className="h-6 w-6" />
-          )}
-          <span className={isCollapsed ? 'hidden' : ''}>Recolher</span>
-        </button>
-      </div>
-    </div>
+            {/* Footer / Status */}
+            <div className="p-4 border-t border-sidebar-border text-xs text-sidebar-foreground/50 text-center">
+              v0.1.0 • Connected
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden glass"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+    </>
   );
 };
-
-export default Sidebar;
