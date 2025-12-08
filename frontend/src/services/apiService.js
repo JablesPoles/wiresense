@@ -25,26 +25,37 @@ async function fetchWithFallback(endpoint, options = {}, mockMethod) {
   }
 }
 
-export const getLatestDataPoint = async () => {
-  return await fetchWithFallback('latest', {}, () => mockApiService.getLatestDataPoint());
+// Helper to clean append params
+const appendDevice = (url, deviceId) => {
+  if (!deviceId) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}device_id=${encodeURIComponent(deviceId)}`;
 };
 
-export const getRealtimeData = async (windowSize = '5m') => {
-  return await fetchWithFallback(`data?window=${windowSize}`, {}, () => mockApiService.getRealtimeData(windowSize));
+export const getDevices = async () => {
+  return await fetchWithFallback('data?type=devices', {}, () => mockApiService.getDevices());
 };
 
-export const getEnergySummary = async () => {
-  return await fetchWithFallback('summary', {}, () => mockApiService.getEnergySummary());
+export const getLatestDataPoint = async (deviceId) => {
+  return await fetchWithFallback(appendDevice('latest', deviceId), {}, () => mockApiService.getLatestDataPoint(deviceId));
 };
 
-export const getDailyEnergyHistory = async (limit = 30) => {
-  return await fetchWithFallback(`history/daily?limit=${limit}`, {}, () => mockApiService.getDailyEnergyHistory(limit));
+export const getRealtimeData = async (windowSize = '5m', deviceId) => {
+  return await fetchWithFallback(appendDevice(`data?window=${windowSize}`, deviceId), {}, () => mockApiService.getRealtimeData(windowSize, deviceId));
 };
 
-export const getMonthlyEnergyHistory = async (limit = 12) => {
-  return await fetchWithFallback(`history/monthly?limit=${limit}`, {}, () => mockApiService.getMonthlyEnergyHistory(limit));
+export const getEnergySummary = async (deviceId) => {
+  return await fetchWithFallback(appendDevice('summary', deviceId), {}, () => mockApiService.getEnergySummary(deviceId));
 };
 
-export const getPeakLoadHistory = async (limit = 7) => {
-  return await fetchWithFallback(`history/peak?limit=${limit}`, {}, () => mockApiService.getPeakLoadHistory(limit));
+export const getDailyEnergyHistory = async (limit = 30, deviceId) => {
+  return await fetchWithFallback(appendDevice(`history/daily?limit=${limit}`, deviceId), {}, () => mockApiService.getDailyEnergyHistory(limit, deviceId));
+};
+
+export const getMonthlyEnergyHistory = async (limit = 12, deviceId) => {
+  return await fetchWithFallback(appendDevice(`history/monthly?limit=${limit}`, deviceId), {}, () => mockApiService.getMonthlyEnergyHistory(limit, deviceId));
+};
+
+export const getPeakLoadHistory = async (limit = 7, deviceId) => {
+  return await fetchWithFallback(appendDevice(`history/peak?limit=${limit}`, deviceId), {}, () => mockApiService.getPeakLoadHistory(limit, deviceId));
 };

@@ -4,13 +4,13 @@ import PropTypes from 'prop-types';
 
 const MAX_DATA_POINTS = 30;
 
-export function RealtimePowerChart({ voltage, data }) {
+export function RealtimePowerChart({ voltage, data, color }) {
   const [series, setSeries] = useState([{ name: 'Potência', data: [] }]);
 
   // Dynamic color
-  const strokeColor = '#8b5cf6'; // Violet (Primary)
+  const strokeColor = color || '#8b5cf6'; // Violet (Primary)
 
-  const [options] = useState({
+  const [options, setOptions] = useState({
     theme: { mode: 'dark' },
     chart: {
       id: 'realtime-power',
@@ -44,7 +44,6 @@ export function RealtimePowerChart({ voltage, data }) {
       tooltip: { enabled: false }
     },
     yaxis: {
-      // title: { text: 'Watts (W)', style: { color: '#94a3b8' } },
       labels: {
         style: { colors: '#94a3b8' },
         formatter: (val) => val.toFixed(0),
@@ -61,6 +60,14 @@ export function RealtimePowerChart({ voltage, data }) {
   });
 
   useEffect(() => {
+    setOptions(prev => ({
+      ...prev,
+      stroke: { ...prev.stroke, colors: [color || '#8b5cf6'] },
+      colors: [color || '#8b5cf6']
+    }));
+  }, [color]);
+
+  useEffect(() => {
     if (data && data.length > 0 && voltage) {
       const formattedData = data.map((point) => ({
         x: new Date(point.time).getTime(),
@@ -74,7 +81,7 @@ export function RealtimePowerChart({ voltage, data }) {
     <div className="bg-card border border-border p-6 rounded-xl shadow-sm h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-foreground font-semibold text-lg">Potência em Tempo Real</h3>
-        <span className="text-xs font-mono text-violet-400 bg-violet-400/10 px-2 py-1 rounded">Live</span>
+        <span className={`text-xs font-mono px-2 py-1 rounded ${color ? 'bg-emerald-500/10 text-emerald-400' : 'text-violet-400 bg-violet-400/10'}`}>Live</span>
       </div>
       <ReactApexChart options={options} series={series} type="area" height={250} />
     </div>
@@ -84,4 +91,5 @@ export function RealtimePowerChart({ voltage, data }) {
 RealtimePowerChart.propTypes = {
   voltage: PropTypes.number.isRequired,
   data: PropTypes.array.isRequired,
+  color: PropTypes.string
 };

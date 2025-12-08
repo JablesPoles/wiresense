@@ -2,11 +2,16 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 
-export const DataCard = ({ title, value, unit, cost, currencySymbol }) => {
+import { cn } from '../lib/utils'; // Assuming cn exists as seen in Sidebar
+
+export const DataCard = ({ title, value, unit, cost, currencySymbol, costLabel = "Custo Estimado", className }) => {
   return (
     <motion.div
       whileHover={{ y: -5 }}
-      className="relative overflow-hidden bg-card border border-border p-6 rounded-xl shadow-lg group"
+      className={cn(
+        "relative overflow-hidden bg-card border border-border p-6 rounded-xl shadow-lg group",
+        className
+      )}
     >
       {/* Glow effect on hover */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
@@ -25,7 +30,7 @@ export const DataCard = ({ title, value, unit, cost, currencySymbol }) => {
 
         {cost && (
           <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">Custo Estimado</span>
+            <span className="text-xs text-muted-foreground">{costLabel}</span>
             <span className="text-sm font-mono font-medium text-green-400">
               {currencySymbol} {cost}
             </span>
@@ -43,9 +48,12 @@ DataCard.propTypes = {
   title: PropTypes.string.isRequired,
   value: PropTypes.oneOfType([
     PropTypes.string,
-    PropTypes.number
+    PropTypes.number,
+    PropTypes.object // For Skeleton
   ]).isRequired,
   unit: PropTypes.string.isRequired,
   cost: PropTypes.string,
   currencySymbol: PropTypes.string,
+  costLabel: PropTypes.string,
+  className: PropTypes.string
 };

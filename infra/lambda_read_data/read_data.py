@@ -67,30 +67,54 @@ def handler(event, context):
         query_type = query_params.get('type', 'range')
 
         # --- Lógica de consulta ---
-        if query_type in ['latest', 'range']:
+        device_id = query_params.get('device_id')
+        device_filter = f'|> filter(fn: (r) => r["device"] == "{device_id}")' if device_id else ''
+
+        if query_type == 'devices':
+            flux_query = f'''
+                import "influxdata/influxdb/schema"
+                schema.tagValues(bucket: "{bucket}", tag: "device")
+            '''
+            raw_results = query_influx(flux_query, org)
+            # Extrair apenas os valores das tags
+            results_body = [r.get('_value') for r in raw_results if r.get('_value')]
+
+        elif query_type in ['latest', 'range']:
             time_range = '-5m' if query_type == 'latest' else query_params.get('range', '-5m')
             flux_query = f'''
                 from(bucket: "{bucket}") |> range(start: {time_range}) 
                   |> filter(fn: (r) => r["_measurement"] == "environment" and r["_field"] == "current")
+                  {device_filter}
                   {"|> last()" if query_type=="latest" else "|> aggregateWindow(every: 10s, fn: mean, createEmpty: false)"}
             '''
             raw_results = query_influx(flux_query, org)
             results_body = (
                 {"time": raw_results[0]['_time'], "current": raw_results[0]['_value']} 
                 if query_type=='latest' and raw_results else
-                [{"time": r.get('_time'), "current": r.get('_value')} for r in raw_results]
+                ([{"time": r.get('_time'), "current": r.get('_value')} for r in raw_results] if query_type != 'latest' else [])
             )
+            if query_type == 'latest' and not raw_results:
+                 results_body = {} # Retorna vazio se nao achar nada
 
         elif query_type == 'summary':
+            # Nota: Para summary/history usando dados agregados 'energia_diaria', 
+            # assumimos que a tag 'device' também foi preservada ou que o bucket longterm tem essa tag.
+            # Se o bucket de longo prazo não tiver tag, o filtro pode não funcionar como esperado.
+            # Vou aplicar o filtro se ele existir.
+            
             today_query = f'''
                 from(bucket: "{longterm_bucket}") |> range(start: -1d)
-                  |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario") |> last()
+                  |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
+                  {device_filter}
+                  |> last()
             '''
             month_query = f'''
                 import "date"
                 month_start = date.truncate(t: now(), unit: 1mo)
                 from(bucket: "{longterm_bucket}") |> range(start: month_start)
-                  |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario") |> sum()
+                  |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
+                  {device_filter}
+                  |> sum()
             '''
             today_result = query_influx(today_query, org)
             month_result = query_influx(month_query, org)
@@ -107,6 +131,7 @@ def handler(event, context):
                     from(bucket: "{longterm_bucket}")
                       |> range(start: -30d)
                       |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
+                      {device_filter}
                       |> aggregateWindow(every: 1d, fn: last, createEmpty: false)
                       |> sort(columns: ["_time"], desc: true)
                       |> limit(n: {limit})
@@ -118,6 +143,7 @@ def handler(event, context):
                     from(bucket: "{longterm_bucket}")
                       |> range(start: -{limit * 31}d)
                       |> filter(fn: (r) => r._measurement == "energia_diaria" and r._field == "kwh_total_diario")
+                      {device_filter}
                       |> aggregateWindow(every: 1mo, fn: sum, createEmpty: false)
                       |> sort(columns: ["_time"], desc: true)
                       |> limit(n: {limit})

@@ -10,10 +10,13 @@ const getCssVar = (name) => {
     return '#8b5cf6'; // Default purple
 };
 
-export const EnergyHistoryChart = ({ data, type = 'daily', unit = 'kWh' }) => {
+export const EnergyHistoryChart = ({ data, type = 'daily', unit = 'kWh', color, label = 'Consumo' }) => {
     // data format: [{ x: '2023-10-01', y: 12.5 }, ...]
 
     // We want a gradient aesthetic
+    const strokeColor = color || '#8b5cf6';
+    const secondaryColor = '#06b6d4';
+
     const options = {
         chart: {
             type: 'area',
@@ -26,7 +29,7 @@ export const EnergyHistoryChart = ({ data, type = 'daily', unit = 'kWh' }) => {
         stroke: {
             curve: 'smooth',
             width: 3,
-            colors: ['#8b5cf6', '#06b6d4'] // Violet to Cyan
+            colors: [strokeColor, secondaryColor]
         },
         fill: {
             type: 'gradient',
@@ -67,7 +70,7 @@ export const EnergyHistoryChart = ({ data, type = 'daily', unit = 'kWh' }) => {
             x: { show: true },
             y: { formatter: val => `${val} ${unit}` }
         },
-        colors: ['#8b5cf6'],
+        colors: [strokeColor],
         responsive: [{
             breakpoint: 640,
             options: {
@@ -84,7 +87,7 @@ export const EnergyHistoryChart = ({ data, type = 'daily', unit = 'kWh' }) => {
     };
 
     const series = [{
-        name: 'Consumo',
+        name: label,
         data: data.map(d => d.y)
     }];
 
@@ -92,10 +95,12 @@ export const EnergyHistoryChart = ({ data, type = 'daily', unit = 'kWh' }) => {
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="mb-4">
                 <h3 className="text-lg font-semibold text-foreground">
-                    {type === 'daily' ? 'Consumo Diário' : 'Consumo Mensal'}
+                    {type === 'daily' ? `${label} Diário` : `${label} Mensal`}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                    {type === 'daily' ? 'Últimos 7 dias' : 'Últimos 6 meses'}
+                    {type === 'daily'
+                        ? `Últimos ${data.length} dias`
+                        : `Últimos ${data.length} meses`}
                 </p>
             </div>
             <ReactApexChart options={options} series={series} type="area" height={350} />

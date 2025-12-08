@@ -1,164 +1,134 @@
-
 # WireSense
 
-O **WireSense** é um sistema de monitoramento de energia em tempo real desenvolvido como uma solução IoT completa.
-Seu objetivo é coletar, armazenar e exibir dados elétricos com precisão e clareza, fornecendo uma visão consolidada do consumo energético, tanto em tempo real quanto em períodos diários e mensais.
+> **Monitoramento de Energia Inteligente em Tempo Real**
+
+O **WireSense** é um sistema de monitoramento de energia desenvolvido como uma solução IoT completa (End-to-End). Seu objetivo é coletar, processar e exibir dados elétricos com alta precisão, fornecendo uma visão consolidada do consumo energético em tempo real e análises históricas.
+
+O projeto integra hardware de ponta, arquitetura serverless em nuvem e uma interface moderna, demonstrando o ciclo completo do dado: do sensor físico até a tela do usuário.
 
 ---
 
-## 📘 Visão Geral
+## 📘 Visão Geral do Sistema
 
-O projeto foi idealizado para demonstrar a integração entre hardware IoT, armazenamento em nuvem e uma interface web moderna, explorando boas práticas de arquitetura distribuída e automação de infraestrutura.
+O fluxo de funcionamento do WireSense segue 5 etapas críticas:
 
-O fluxo geral do sistema é o seguinte:
-
-1. **Coleta de dados** — Um dispositivo IoT (sensor de corrente não invasivo) mede continuamente o consumo elétrico e envia os dados para a nuvem.
-2. **Processamento e Armazenamento** — Funções **AWS Lambda** processam os dados recebidos e os gravam em um banco de dados **InfluxDB**, otimizando o armazenamento de séries temporais.
-3. **Visualização** — O **frontend React** consome os dados via API e os exibe em uma dashboard interativa, com gráficos e indicadores de consumo em tempo real, histórico diário e mensal.
-4. **Infraestrutura** — Toda a estrutura é provisionada na **AWS** via **Terraform**, garantindo reprodutibilidade, escalabilidade e controle de custos.
-5. **Integração Contínua (CI/CD)** — O projeto utiliza **GitHub Actions** para automatizar o deploy e o controle de versões.
-
----
-
-## 🧩 Estrutura do Projeto
-
-A organização do repositório segue uma separação lógica entre as camadas de frontend, backend e infraestrutura.
-
-```
-wiresense/
-│
-├── .github/                 # Configurações de CI/CD (GitHub Actions)
-│
-├── frontend/                # Aplicação web (React + Vite + TailwindCSS)
-│   ├── src/                 # Código-fonte principal do frontend
-│   ├── public/              # Arquivos estáticos
-│   ├── Dockerfile           # Imagem Docker do frontend
-│   ├── vite.config.js       # Configuração do Vite e PWA
-│   └── ...                  # Demais arquivos de configuração
-│
-├── infra/                   # Código Terraform da infraestrutura AWS
-│   ├── terraform/           # Módulos e variáveis de provisionamento
-│   ├── lambda_function/     # Código da função Lambda de gravação de dados
-│   └── lambda_read_data/    # Função Lambda de leitura e consulta
-│
-├── .env                     # Variáveis de ambiente do projeto
-├── docker-compose.yml       # Orquestração local (se aplicável)
-├── nginx.conf               # Configuração do servidor NGINX
-└── README.md                # Este documento
-```
+1.  **Coleta (IoT)** — Um dispositivo baseado em ESP32, equipado com sensores de corrente não-invasivos, mede o consumo elétrico milhares de vezes por segundo e transmite os dados via HTTPS.
+2.  **Ingestão Serverless** — O **AWS API Gateway** recebe os dados e aciona funções **AWS Lambda**, que validam e processam a carga.
+3.  **Armazenamento Temporal** — Os dados são gravados no **InfluxDB**, um banco de dados otimizado para séries temporais (Time Series), ideal para telemetria de alta frequência.
+4.  **Backend de Leitura** — Funções Lambda separadas consultam o banco para entregar agregações (média, soma, picos) para o frontend.
+5.  **Visualização (Frontend 2.0)** — Uma aplicação **React** moderna consome esses dados para gerar dashboards interativos e relatórios financeiros.
 
 ---
 
 ## ☁️ Arquitetura e Tecnologias
 
-O *WireSense* combina múltiplos serviços e tecnologias para oferecer uma solução robusta e escalável.
+O WireSense utiliza uma stack moderna e distribuída para garantir escalabilidade, segurança e baixo custo de operação.
 
-### Infraestrutura na AWS
+### Infraestrutura na AWS (IaC)
+Toda a infraestrutura é provisionada via **Terraform**, garantindo que o ambiente seja reprodutível e auditável:
 
-A arquitetura do WireSense foi projetada para operar de forma escalável, segura e com custos otimizados, aproveitando serviços nativos da AWS:
-
-* **S3** — Armazena os arquivos estáticos do frontend React. O conteúdo é automaticamente sincronizado para esse bucket durante o processo de deploy.
-* **CloudFront** — Distribui o frontend globalmente com baixa latência, cache inteligente e suporte a HTTPS, garantindo alta disponibilidade e desempenho.
-* **Lambda** — Funções serverless responsáveis por processar as medições enviadas pelo dispositivo IoT e consultar dados do InfluxDB.
-* **ECR (Elastic Container Registry)** — Armazena imagens Docker de serviços auxiliares, como utilitários de ingestão de dados.
-* **DynamoDB** — Utilizado como mecanismo de *state locking* para o Terraform, evitando conflitos em atualizações simultâneas de infraestrutura.
-* **CloudWatch** — Centraliza logs e métricas das funções Lambda, permitindo monitoramento contínuo e geração de alertas.
-* **API Gateway** — Expõe endpoints REST que conectam o frontend às funções Lambda de leitura e gravação.
+*   **S3**: Hospedagem estática segura dos arquivos do frontend.
+*   **CloudFront**: CDN global que distribui a aplicação com baixa latência e SSL/TLS.
+*   **API Gateway**: Porta de entrada escalável para os dados dos sensores e requisições do usuário.
+*   **AWS Lambda**: Computação serverless para regras de negócio, ingestão de dados e consultas, eliminando a necessidade de servidores ligados 24/7.
+*   **DynamoDB**: Utilizado para controle de estado (*state locking*) do Terraform, prevenindo conflitos de deploy.
+*   **CloudWatch**: Centralização de logs e métricas de saúde das funções e da API.
+*   **Secrets Manager**: Gerenciamento seguro de credenciais (chaves de API, senhas do banco) sem expô-las no código.
 
 ### Banco de Dados
+*   **InfluxDB**: Escolhido especificamente para IoT. Permite consultas ultra-rápidas de faixas de tempo (ex: "últimos 30 dias") e downsampling automático de dados antigos.
 
-* **InfluxDB** — Banco de dados de séries temporais, ideal para medições contínuas de energia elétrica.
-
-### Frontend
-
-* **React** — Framework JavaScript para construção da interface interativa.
-* **Vite** — Ferramenta de build rápida e moderna.
-* **TailwindCSS** — Estilização baseada em utilitários, garantindo leveza e consistência visual.
-* **PWA (Progressive Web App)** — Permite uso offline e instalação em dispositivos móveis.
-
-### Integração e Deploy
-
-* **Docker** — Empacotamento e isolamento dos serviços.
-* **GitHub Actions** — Pipeline CI/CD para automação do build e deploy contínuo.
-* **Terraform** — Provisionamento automatizado de toda a infraestrutura.
+### Frontend (v2.0)
+A interface foi reconstruída com foco em performance e usabilidade:
+*   **Stack**: React 18, Vite, TailwindCSS.
+*   **Estado e Store**: Context API para gerenciamento global (Sessão, Dispositivos, Configurações).
+*   **Persistência Local**: Estratégia *Local-First* inteligente, salvando preferências do usuário no navegador.
 
 ---
 
-## 📊 Funcionalidades Principais
+## 🧠 Estrutura Lógica
 
-* Monitoramento de energia em **tempo real**.
-* Exibição de **gráficos diários e mensais** com base no consumo acumulado.
-* Cálculo automático de **custo estimado** com base na tarifa de kWh configurada.
-* **Dashboard responsiva**, desenvolvida com foco em clareza e usabilidade.
-* **Configurações persistentes** do usuário (tensão, moeda e tarifa de energia).
-* Sistema de **alertas e métricas AWS** para acompanhar falhas ou anomalias.
+O diagrama abaixo ilustra o fluxo detalhado da informação através dos componentes da arquitetura:
+
+```mermaid
+graph TD
+    subgraph "Edge / IoT"
+        Sensor[Sensor ESP32] -->|HTTPS POST| Gateway[AWS API Gateway]
+    end
+
+    subgraph "AWS Cloud (Serverless)"
+        Gateway -->|Trigger| Ingest[Lambda: Ingestão]
+        Gateway -->|Trigger| Read[Lambda: Leitura]
+        
+        Ingest -->|Write| DB[(InfluxDB Cloud)]
+        Read -->|Query| DB
+        
+        Secrets[Secrets Manager] -.-> Ingest
+        Secrets -.-> Read
+    end
+
+    subgraph "Frontend Delivery"
+        User[Navegador do Usuário] -->|HTTPS| CDN[CloudFront]
+        CDN -->|Origin| Bucket[S3 Bucket]
+        User -->|API Calls| Gateway
+    end
+```
 
 ---
 
-## 🧠 Estrutura Lógica Simplificada
+## ✨ Funcionalidades da Interface
 
-                                  Internet
-                                     │
-                        +------------┴------------+
-                        │   CloudFront (frontend) │
-                        │  -> origin: S3 bucket   │
-                        +------------┬------------+
-                                     │
-                                     │ (HTTPS)
-                                     │
-                               Users / Browser
-                                     │
-                                     ▼
-                           +----------------------+
-                           |  API Gateway (/data) |
-                           +----┬------------┬----+
-                                │            │
-                     GET /data  │            │ POST /data (api_key)
-                                │            │
-                    +-----------▼---+        +-▼-------------+
-                    | Lambda (read) |        | Lambda (write)|
-                    | - handler:    |        | - handler:    |
-                    |   read_data   |        |   index       |
-                    | - reads secret|        | - reads secret|
-                    |   (SecretsMgr)|        |   (SecretsMgr)|
-                    +------+---+----+        +------+---+----+
-                           |   |                     |   |
-                           |   |                     |   |
-                           |   |                     |   |
-                           |   |   (queries / reads) |   | (writes)
-                           |   +---------------------+   |
-                           |        InfluxDB (ECS)       |
-                           |   - bucket: influxdb_data   |
-                           |   - longterm bucket         |
-                           +-----------------------------+
+A nova versão da interface web traz recursos avançados para análise e gestão:
 
-Other infra components (auxiliary):
-- S3 bucket -> frontend static files (origin of CloudFront)
-- CloudWatch -> logs/metrics for Lambdas & ECS (alarms)
-- SNS -> alarms topic (email subscriptions)
-- Secrets Manager -> stores INFLUXDB credentials (used by both Lambdas and ECS)
-- ECR/ECS -> hosts InfluxDB service (with EFS for persistent storage)
-- VPC Endpoints / Security Groups / NAT / Subnets -> network & isolation
-- Terraform state stored in S3 with DynamoDB locking (terraform_state / locks)
+### 1. Dashboard em Tempo Real
+*   **Telemetria Instantânea**: Visualização de Potência (Watts) e Corrente (Amperes) com atualização a cada 5 segundos.
+*   **Temas Contextuais**: O design se adapta automaticamente:
+    *   *Tema Emerald/Gold* para **Geração Solar**.
+    *   *Tema Cyan/Violet* para **Consumo Residencial**.
+*   **Saúde do Sistema**: Indicadores visuais de status da conexão e alertas de anomalia.
+
+### 2. Histórico Granular
+Ferramentas de análise para diferentes janelas temporais, permitindo identificar padrões de consumo:
+*   **Visão Diária**: Controles para **7 Dias** ou **30 Dias**.
+*   **Visão Mensal**: Análise macro de **6 Meses** ou **1 Ano**.
+*   **Gráficos Interativos**: Zoom, tooltips e exportação de dados.
+
+### 3. Gestão Financeira e Relatórios
+*   **Multimoeda**: Suporte nativo para conversão instantânea entre **Real (R$)**, **Dólar ($)** e **Euro (€)**.
+*   **Previsão de Custos**: Projeção de gastos baseada na tarifa configurada.
+*   **Metas de Orçamento**: Defina um teto de gastos mensal e acompanhe o progresso em tempo real.
+
+### 4. Gestão de Dispositivos e Perfil
+*   **Configurações Isoladas**: Cada dispositivo (ex: Ar Condicionado, Inversor) mantém suas próprias configurações de voltagem (110v/220v) e tarifa.
+*   **Segurança**: Login robusto via Google, com proteção de rotas e persistência de sessão.
+
+---
+
+## 🚀 Instalação e Execução (Frontend)
+
+Para rodar a interface localmente:
+
+1.  **Clone o repositório**
+    ```bash
+    git clone https://github.com/seu-usuario/wiresense.git
+    cd wiresense/frontend
+    ```
+
+2.  **Instale as dependências**
+    ```bash
+    npm install
+    ```
+
+3.  **Execute o servidor de desenvolvimento**
+    ```bash
+    npm run dev
+    ```
+    O sistema estará acessível em `http://localhost:5173`.
+    > **Nota**: Caso a API real não esteja configurada localmente, o frontend utilizará automaticamente o **Mock Service** integrado para demonstração.
 
 ---
 
 ## 👥 Autores
 
-* **Matheus Poles Nunes**
-* **Marciel Soares Silva**
-
----
-
-## 🏗️ Considerações Técnicas
-
-O projeto foi desenvolvido com foco em modularidade e reprodutibilidade, possibilitando que todo o ambiente possa ser criado ou removido com poucos comandos Terraform, garantindo controle de custos em ambientes de teste e produção.
-
-A estrutura de diretórios segue boas práticas de organização e separação de responsabilidades, permitindo manutenção facilitada e rápida escalabilidade futura.
-
----
-
-## ⚙️ Status
-
-Projeto em estágio funcional completo, com infraestrutura e frontend integrados.
-A arquitetura e o código foram desenvolvidos de modo a permitir futuras expansões, como integração de novos sensores, suporte a múltiplas unidades de consumo e análises preditivas de demanda energética.
+*   **Matheus Poles Nunes**
+*   **Marciel Soares Silva**

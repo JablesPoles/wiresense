@@ -1,3 +1,4 @@
+import { useDevice } from '../contexts/DeviceContext';
 import React, { useState, useEffect } from 'react';
 import { Download, Calendar } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
@@ -13,7 +14,13 @@ import {
 
 const HistoryPage = () => {
     const { tarifaKwh, moeda } = useSettings();
+    const { isGenerator, currentDeviceId } = useDevice();
     const currency = moeda === 'BRL' ? 'R$' : (moeda === 'EUR' ? '€' : '$');
+
+    // Theme Configuration
+    const isSolar = isGenerator;
+    const themeHex = isSolar ? '#10b981' : '#06b6d4';
+    const secondaryHex = isSolar ? '#fbbf24' : '#8b5cf6';
 
     // View state
     const [viewMode, setViewMode] = useState('daily'); // 'daily' | 'monthly'
@@ -24,7 +31,7 @@ const HistoryPage = () => {
     const [peakData, setPeakData] = useState([]);
     const [costData, setCostData] = useState([]);
 
-    // Update time range options based on view mode
+    // Configure time range options based on active view mode
     const rangeOptions = viewMode === 'daily'
         ? [{ label: '7 Dias', value: '7d' }, { label: '30 Dias', value: '30d' }]
         : [{ label: '6 Meses', value: '6m' }, { label: '12 Meses', value: '1y' }];
@@ -36,6 +43,8 @@ const HistoryPage = () => {
     };
 
     useEffect(() => {
+        let isMounted = true;
+
         const fetchData = async () => {
             let limit = 7;
             if (timeRange === '30d') limit = 30;
@@ -45,31 +54,37 @@ const HistoryPage = () => {
             let consumption = [];
             let peaks = [];
 
-            if (viewMode === 'daily') {
-                consumption = await getDailyEnergyHistory(limit);
-                peaks = await getPeakLoadHistory(limit);
-            } else {
-                consumption = await getMonthlyEnergyHistory(limit);
-                // For monthly peaks, we could add a method or just approximate/mock for now
-                // Let's use the same peak history function for simplicity or mock it
-                peaks = await getPeakLoadHistory(limit);
-            }
+            try {
+                if (viewMode === 'daily') {
+                    consumption = await getDailyEnergyHistory(limit, currentDeviceId); // Pass deviceId
+                    peaks = await getPeakLoadHistory(limit, currentDeviceId);
+                } else {
+                    consumption = await getMonthlyEnergyHistory(limit, currentDeviceId);
+                    peaks = await getPeakLoadHistory(limit, currentDeviceId);
+                }
 
-            setConsumptionData(consumption || []);
-            setPeakData(peaks || []);
+                if (!isMounted) return;
 
-            // Calculate costs
-            if (consumption && tarifaKwh) {
-                const costs = consumption.map(item => ({
-                    x: item.x,
-                    y: parseFloat((item.y * tarifaKwh).toFixed(2))
-                }));
-                setCostData(costs);
+                setConsumptionData(consumption || []);
+                setPeakData(peaks || []);
+
+                // Calculate costs
+                if (consumption && tarifaKwh) {
+                    const costs = consumption.map(item => ({
+                        x: item.x,
+                        y: parseFloat((item.y * tarifaKwh).toFixed(2))
+                    }));
+                    setCostData(costs);
+                }
+            } catch (error) {
+                console.error("Error fetching history:", error);
             }
         };
 
         fetchData();
-    }, [viewMode, timeRange, tarifaKwh]);
+
+        return () => { isMounted = false; };
+    }, [viewMode, timeRange, tarifaKwh, currentDeviceId]); // Add currentDeviceId
 
     const handleExport = () => {
         alert("Exportação de CSV será implementada em breve.");
@@ -80,49 +95,47 @@ const HistoryPage = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white">Histórico de Consumo</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+                        Histórico de {isSolar ? 'Geração' : 'Consumo'}
+                        <span className={`text-sm px-2 py-0.5 rounded-full border ${isSolar ? 'bg-emerald-500/10 border-amber-500/20 text-amber-500' : 'bg-cyan-500/10 border-violet-500/20 text-cyan-500'}`}>
+                            {isSolar ? 'Produção' : 'Consumo'}
+                        </span>
+                    </h1>
                     <p className="text-muted-foreground">
-                        Análise detalhada do consumo e custos ao longo do tempo.
+                        Análise detalhada {isSolar ? 'da geração e economia' : 'do consumo e custos'} ao longo do tempo.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleExport}
-                        className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium"
-                    >
-                        <Download size={16} />
-                        Exportar CSV
-                    </button>
-                </div>
+                {/* ... button */}
             </div>
 
             {/* Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-4 bg-muted/30 p-2 rounded-lg border border-border">
+            <div className={`flex flex-wrap items-center justify-between gap-4 bg-muted/30 p-2 rounded-lg border ${isSolar ? 'border-amber-500/10' : 'border-border'}`}>
                 <div className="flex gap-2">
                     <button
                         onClick={() => handleModeChange('daily')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'daily' ? 'bg-primary text-white shadow' : 'text-gray-400 hover:text-white'
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'daily'
+                            ? (isSolar ? 'bg-emerald-600 text-white shadow-emerald-900/20' : 'bg-cyan-600 text-white shadow-cyan-900/20')
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         Diário
                     </button>
                     <button
                         onClick={() => handleModeChange('monthly')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'monthly' ? 'bg-primary text-white shadow' : 'text-gray-400 hover:text-white'
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'monthly'
+                            ? (isSolar ? 'bg-emerald-600 text-white shadow-emerald-900/20' : 'bg-cyan-600 text-white shadow-cyan-900/20')
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         Mensal
                     </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Calendar size={16} className="text-muted-foreground" />
-                    <TimeRangeSelector
-                        selectedRange={timeRange}
-                        onRangeChange={setTimeRange}
-                        ranges={rangeOptions}
-                    />
-                </div>
+                <TimeRangeSelector
+                    selectedRange={timeRange}
+                    onRangeChange={setTimeRange}
+                    ranges={rangeOptions}
+                />
             </div>
 
             {/* Main Charts Grid */}
@@ -131,16 +144,19 @@ const HistoryPage = () => {
                     data={consumptionData}
                     type={viewMode}
                     unit="kWh"
+                    color={themeHex}
+                    label={isSolar ? 'Geração' : 'Consumo'}
                 />
                 <CostChart
                     data={costData}
                     currencySymbol={currency}
+                    color={isSolar ? '#10b981' : '#ef4444'} // Green for savings, Red for cost
                 />
             </div>
 
             {/* Secondary Analysis */}
             <div className="grid grid-cols-1 gap-6">
-                <PeakLoadChart data={peakData} />
+                <PeakLoadChart data={peakData} color={secondaryHex} />
                 {/* <HeatmapChart /> */}
             </div>
 
