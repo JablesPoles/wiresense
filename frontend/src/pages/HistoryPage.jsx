@@ -13,15 +13,22 @@ import {
 } from '../services/apiService';
 import { CSVExportButton } from '../components/common/CSVExportButton';
 
+import { useTheme } from '../contexts/ThemeContext';
+
 const HistoryPage = () => {
     const { tarifaKwh, moeda } = useSettings();
     const { isGenerator, currentDeviceId } = useDevice();
+    const { theme } = useTheme();
     const currency = moeda === 'BRL' ? 'R$' : (moeda === 'EUR' ? '€' : '$');
 
     // Theme Configuration
     const isSolar = isGenerator;
-    const themeHex = isSolar ? '#10b981' : '#06b6d4';
-    const secondaryHex = isSolar ? '#fbbf24' : '#8b5cf6';
+    const currentMode = isSolar ? 'generator' : 'consumer';
+    const modeData = theme.modes[currentMode];
+
+    // Dynamic Colors
+    const themeHex = modeData.primary;
+    const secondaryHex = modeData.secondary;
 
     // View state
     const [viewMode, setViewMode] = useState('daily'); // 'daily' | 'monthly'
@@ -98,7 +105,14 @@ const HistoryPage = () => {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
                         Histórico de {isSolar ? 'Geração' : 'Consumo'}
-                        <span className={`text-sm px-2 py-0.5 rounded-full border ${isSolar ? 'bg-emerald-500/10 border-amber-500/20 text-amber-500' : 'bg-cyan-500/10 border-violet-500/20 text-cyan-500'}`}>
+                        <span
+                            className="text-sm px-2 py-0.5 rounded-full border transition-colors"
+                            style={{
+                                backgroundColor: `${themeHex}20`,
+                                borderColor: `${themeHex}40`,
+                                color: themeHex
+                            }}
+                        >
                             {isSolar ? 'Produção' : 'Consumo'}
                         </span>
                     </h1>
@@ -124,18 +138,28 @@ const HistoryPage = () => {
                 <div className="flex gap-2">
                     <button
                         onClick={() => handleModeChange('daily')}
+                        style={viewMode === 'daily' ? {
+                            backgroundColor: themeHex,
+                            color: theme.colors.text,
+                            boxShadow: `0 0 20px -5px ${themeHex}50`
+                        } : {}}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'daily'
-                            ? (isSolar ? 'bg-emerald-600 text-white shadow-emerald-900/20' : 'bg-cyan-600 text-white shadow-cyan-900/20')
-                            : 'text-gray-400 hover:text-white'
+                            ? '' // Style handled inline
+                            : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
                         Diário
                     </button>
                     <button
                         onClick={() => handleModeChange('monthly')}
+                        style={viewMode === 'monthly' ? {
+                            backgroundColor: themeHex,
+                            color: theme.colors.text,
+                            boxShadow: `0 0 20px -5px ${themeHex}50`
+                        } : {}}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'monthly'
-                            ? (isSolar ? 'bg-emerald-600 text-white shadow-emerald-900/20' : 'bg-cyan-600 text-white shadow-cyan-900/20')
-                            : 'text-gray-400 hover:text-white'
+                            ? ''
+                            : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
                         Mensal
@@ -161,7 +185,7 @@ const HistoryPage = () => {
                 <CostChart
                     data={costData}
                     currencySymbol={currency}
-                    color={isSolar ? '#10b981' : '#ef4444'} // Green for savings, Red for cost
+                    color={isSolar ? secondaryHex : '#ef4444'} // Green/Gold for savings, Red for cost. Or use theme logic.
                 />
             </div>
 

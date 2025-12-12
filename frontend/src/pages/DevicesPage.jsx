@@ -3,9 +3,11 @@ import { useDevice } from '../contexts/DeviceContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Monitor, Zap, Sun, Trash2, Check, Smartphone, Server } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
 
 const DevicesPage = () => {
     const { devices, currentDeviceId, setCurrentDeviceId, addDevice, isGenerator } = useDevice();
+    const { theme } = useTheme();
     const navigate = useNavigate();
     const [isAdding, setIsAdding] = useState(false);
 
@@ -22,12 +24,10 @@ const DevicesPage = () => {
         // Reset and close
         setNewName('');
         setIsAdding(false);
-        // Optional: Redirect to settings or just show success
     };
 
     const handleSelectDevice = (id) => {
         setCurrentDeviceId(id);
-        // Feedback or navigation? Let's just feedback visually by the border change
     };
 
     return (
@@ -61,6 +61,11 @@ const DevicesPage = () => {
                     const isDevGenerator = /solar|pv|gerador|generator|inverter/i.test(device.id);
                     const Icon = isDevGenerator ? Sun : Zap;
 
+                    // Dynamic Theme Colors
+                    const modeData = isDevGenerator ? theme.modes.generator : theme.modes.consumer;
+                    const primaryColor = modeData.primary;
+                    const secondaryColor = modeData.secondary;
+
                     return (
                         <motion.div
                             key={device.id}
@@ -70,19 +75,40 @@ const DevicesPage = () => {
                             className={`
                                 relative p-6 rounded-xl border backdrop-blur-sm cursor-pointer transition-all duration-300 group
                                 ${isSelected
-                                    ? (isDevGenerator ? 'bg-emerald-500/10 border-emerald-500/50 shadow-emerald-900/20' : 'bg-cyan-500/10 border-cyan-500/50 shadow-cyan-900/20')
+                                    ? 'shadow-lg'
                                     : 'bg-card border-border hover:border-primary/30 hover:bg-accent/5'
                                 }
                             `}
+                            style={{
+                                borderColor: isSelected ? primaryColor : undefined,
+                                backgroundColor: isSelected ? `${primaryColor}15` : undefined, // 10% opacity
+                                boxShadow: isSelected ? `0 10px 30px -10px ${primaryColor}40` : undefined
+                            }}
                             onClick={() => handleSelectDevice(device.id)}
                         >
                             <div className="flex justify-between items-start mb-4">
-                                <div className={`p-3 rounded-lg ${isDevGenerator ? 'bg-amber-500/10 text-amber-500' : 'bg-violet-500/10 text-violet-500'}`}>
+                                <div
+                                    className="p-3 rounded-lg flex items-center justify-center transition-colors"
+                                    style={{
+                                        backgroundColor: `${secondaryColor}20`,
+                                        color: secondaryColor
+                                    }}
+                                >
                                     <Icon size={24} />
                                 </div>
                                 {isSelected && (
-                                    <span className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${isDevGenerator ? 'bg-emerald-500/20 text-emerald-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${isDevGenerator ? 'bg-emerald-400' : 'bg-cyan-400'} animate-pulse`} />
+                                    <span
+                                        className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full transition-colors"
+                                        style={{
+                                            backgroundColor: `${primaryColor}20`,
+                                            color: primaryColor,
+                                            border: `1px solid ${primaryColor}30`
+                                        }}
+                                    >
+                                        <div
+                                            className="w-1.5 h-1.5 rounded-full animate-pulse"
+                                            style={{ backgroundColor: primaryColor }}
+                                        />
                                         Ativo
                                     </span>
                                 )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, TrendingUp, Sun, Zap, Calendar, Activity } from 'lucide-react';
 import { useSettings, useDeviceSettings } from '../contexts/SettingsContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useDevice } from '../contexts/DeviceContext'; // Import Device Context
 import { CurrentRealtimeChart } from '../components/charts/CurrentRealtimeChart';
 import { RealtimePowerChart } from '../components/charts/RealtimePowerChart';
@@ -214,22 +215,29 @@ const DashboardPage = () => {
     return () => { isMounted = false; clearInterval(interval); };
   }, [currentDeviceId, tarifaKwh]);
 
-  // Theme Logic - Dual Colors + SIMULATION MODE (Amber)
+  // Theme Logic - Dynamic from Context
   const isSolar = isGenerator;
+  const { theme } = useTheme();
 
-  // Base Theme
-  let themeColor = isSolar ? 'emerald' : 'cyan';
-  let themeHex = isSolar ? '#10b981' : '#06b6d4';
-  let secondaryHex = isSolar ? '#fbbf24' : '#8b5cf6'; // Gold vs Purple
-  let ThemeIcon = isSolar ? Sun : Zap;
+  let currentMode = 'consumer';
+  if (simulationMode) currentMode = 'simulator';
+  else if (isSolar) currentMode = 'generator';
 
-  // Simulation Override
-  if (simulationMode) {
-    themeColor = 'amber';
-    themeHex = '#f59e0b'; // Amber-500
-    secondaryHex = '#ef4444'; // Red for contrast/alert
-    ThemeIcon = Zap;
-  }
+  const modeData = theme?.modes?.[currentMode] || theme?.modes?.consumer;
+
+  // Colors for Charts
+  const themeHex = modeData?.primary || '#06b6d4';
+  const secondaryHex = modeData?.secondary || '#8b5cf6';
+
+  // Icon Class (Tailwind) is trickier because we need dynamic color classes.
+  // Instead of re-implementing Icon logic, let's keep the existing icon components but apply inline colors or just use the HEX from theme.
+  // Actually, let's just use the `primary` hex for inline styles where possible or keep simple conditional classes if strictly needed.
+  // For icons inside cards, we can use `style={{ color: themeHex }}` for perfect matching.
+
+  let ThemeIcon = Zap;
+  if (currentMode === 'generator') ThemeIcon = Sun;
+  if (currentMode === 'consumer') ThemeIcon = Zap;
+  if (currentMode === 'simulator') ThemeIcon = Zap; // Or Activity
 
   // Calculate Projections (Estimates)
   // Calculate Projections (Estimates)
@@ -276,7 +284,10 @@ const DashboardPage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-amber-950/20 -z-10 pointer-events-none backdrop-blur-[2px]"
+          className="fixed inset-0 pointer-events-none z-0"
+          style={{
+            background: 'radial-gradient(circle at 50% 10%, rgba(245, 158, 11, 0.15) 0%, rgba(0, 0, 0, 0) 50%)',
+          }}
         />
       )}
 

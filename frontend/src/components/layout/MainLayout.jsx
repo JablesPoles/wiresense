@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useDevice } from '../../contexts/DeviceContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MainLayout = ({ children }) => {
@@ -11,20 +12,18 @@ const MainLayout = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Desktop
 
   const { isGenerator } = useDevice();
+  const { theme } = useTheme();
   const isSolar = isGenerator;
 
-  // Dashboard Gradient Logic (Lifted)
-  const bgGradient = isSolar
-    ? "radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15), transparent 60%), radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.1), transparent 50%)"
-    : "radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.15), transparent 60%), radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1), transparent 50%)";
-
-  // CRITICAL FIX: Do not render layout elements on Login page
-  if (location.pathname === '/login') {
-    return <main className="min-h-screen bg-background">{children}</main>;
-  }
+  // Dynamic Dashboard Gradient - Lifted for Smooth Transitions
+  // Determine gradient based on mode (Solar, Consumer, or Default)
+  // Logic: Simulation takes precedence if we want, OR we keep Simulation overlay separate (DashboardPage handles overlay).
+  // Here we handle the BASE ambient gradient.
+  const themeMode = isSolar ? 'generator' : 'consumer';
+  const activeGradient = theme?.modes?.[themeMode]?.gradient;
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground font-sans antialiased">
+    <div className="flex min-h-screen bg-background text-foreground font-sans antialiased transition-colors duration-500">
       {/* Sidebar */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -49,35 +48,26 @@ const MainLayout = ({ children }) => {
             {children}
           </div>
 
-          {/* Background gradient effects - Kept but adjusted z-index */}
+          {/* Background pattern - Consistent across themes */}
           <div className="fixed inset-0 z-0 pointer-events-none">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
             <div className="absolute inset-0 bg-grid-white/[0.05]" style={{ backgroundSize: '30px 30px' }}></div>
           </div>
 
-          {/* Dynamic Dashboard Gradient - Lifted for Smooth Transitions */}
-          <AnimatePresence>
-            {location.pathname === '/' && (
+          {/* Dynamic Theme Gradient */}
+          <AnimatePresence mode='wait'>
+            {location.pathname === '/' && activeGradient && (
               <motion.div
+                key={isSolar ? 'solar-grad' : 'cons-grad'}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }} // Increased opacity for vibrancy
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.8 }} // Slower transition for premium feel
-                className="fixed inset-0 pointer-events-none z-0" // Changed -z-10 to z-0 to sit on top of bg-background but behind content (z-10)
+                transition={{ duration: 1.5 }}
+                className="fixed inset-0 pointer-events-none z-0"
               >
-                {/* Primary Glow */}
                 <div
                   className="absolute inset-0 w-full h-full transition-all duration-1000"
-                  style={{
-                    background: isSolar
-                      ? "radial-gradient(circle at 50% -20%, rgba(16, 185, 129, 0.25), transparent 70%), radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.15), transparent 50%)"
-                      : "radial-gradient(circle at 50% -20%, rgba(6, 182, 212, 0.25), transparent 70%), radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.15), transparent 50%)"
-                  }}
-                />
-
-                {/* Secondary Ambient Pulse */}
-                <div
-                  className={`absolute inset-0 w-full h-full ${isSolar ? 'bg-emerald-500/5' : 'bg-cyan-500/5'}`}
+                  style={{ background: activeGradient }}
                 />
               </motion.div>
             )}

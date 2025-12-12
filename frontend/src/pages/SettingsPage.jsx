@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { DollarSign, Globe, Zap, Bell, Save } from 'lucide-react';
 import { VoltageSelector } from '../components/layout/VoltageSelector';
 import { Switch } from '../components/ui/switch';
+import { ThemeSelector } from '../components/settings/ThemeSelector';
+import { Palette } from 'lucide-react';
 
 const SettingsSection = ({ title, icon: Icon, children, isSolar }) => (
     <div className={`bg-card border rounded-xl p-6 shadow-sm ${isSolar ? 'border-amber-500/20' : 'border-border'}`}>
@@ -265,6 +267,16 @@ const SettingsPageContent = () => {
                                     : "Valor único cobrado por kWh consumido."}
                             </p>
                         </div>
+                    </div>
+                </SettingsSection>
+
+                {/* Appearance / Themes */}
+                <SettingsSection title="Aparência e Temas" icon={Palette} isSolar={isSolar}>
+                    <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            Personalize as cores e o estilo do painel.
+                        </p>
+                        <ThemeSelector />
                     </div>
                 </SettingsSection>
 

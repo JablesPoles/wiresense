@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import { TutorialProvider, useTutorial } from './contexts/TutorialContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { DeviceProvider } from './contexts/DeviceContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import MainLayout from './components/layout/MainLayout';
 import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
@@ -101,15 +102,17 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <NotificationProvider>
-        <SettingsProvider>
-          <TutorialProvider>
-            <DeviceProvider>
-              <AppContent />
-            </DeviceProvider>
-          </TutorialProvider>
-        </SettingsProvider>
-      </NotificationProvider>
+      <ThemeProvider>
+        <NotificationProvider>
+          <SettingsProvider>
+            <TutorialProvider>
+              <DeviceProvider>
+                <AppContent />
+              </DeviceProvider>
+            </TutorialProvider>
+          </SettingsProvider>
+        </NotificationProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
