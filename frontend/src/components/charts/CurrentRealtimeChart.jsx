@@ -14,41 +14,53 @@ export function CurrentRealtimeChart({ data, color }) {
     theme: { mode: 'dark' },
     chart: {
       id: 'realtime-current',
-      type: 'area',
+      type: 'line',
       background: 'transparent',
       animations: {
         enabled: true,
         easing: 'linear',
-        dynamicAnimation: { speed: 1000 },
+        dynamicAnimation: {
+          enabled: true,
+          speed: 900
+        },
+        animateGradually: { enabled: false }, // Prevent 'redrawing' the whole line
+        initialAnimation: { enabled: false }  // Prevent 'growing' animation on load
       },
       toolbar: { show: false },
       zoom: { enabled: false },
       fontFamily: 'inherit',
     },
-    stroke: { curve: 'smooth', width: 3, colors: [strokeColor] },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.7,
-        opacityTo: 0.1,
-        stops: [0, 100]
+    stroke: {
+      curve: 'straight',
+      width: 4,
+      colors: [strokeColor],
+      dropShadow: {
+        enabled: true,
+        top: 0,
+        left: 0,
+        blur: 10,
+        opacity: 0.6,
+        color: strokeColor
       }
+    },
+    fill: {
+      type: 'solid',
+      opacity: 0
     },
     dataLabels: { enabled: false },
     xaxis: {
       type: 'datetime',
-      range: 30000,
+      // range removed to let chart auto-fit data
       labels: { show: false },
       axisBorder: { show: false },
       axisTicks: { show: false },
       tooltip: { enabled: false }
     },
     yaxis: {
-      labels: {
-        style: { colors: '#94a3b8' },
-        formatter: (val) => val.toFixed(1),
-      },
+      show: false, // Hide the entire axis
+      labels: { show: false },
+      axisBorder: { show: false },
+      axisTicks: { show: false }
     },
     grid: {
       borderColor: '#334155',

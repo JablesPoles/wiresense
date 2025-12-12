@@ -1,6 +1,6 @@
 
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, History, Settings, Menu, X, FileText, ChevronLeft, ChevronRight, Monitor, LogOut } from 'lucide-react';
+import { LayoutDashboard, History, Settings, Menu, X, FileText, ChevronLeft, ChevronRight, Monitor, LogOut, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,7 @@ export const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   const links = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Dispositivos', icon: Monitor, path: '/devices' },
+    { name: 'Simulador', icon: Zap, path: '/simulator' }, // New Link
     { name: 'Histórico', icon: History, path: '/history' },
     { name: 'Relatórios', icon: FileText, path: '/reports' },
     { name: 'Configurações', icon: Settings, path: '/settings' },

@@ -11,6 +11,7 @@ import {
     getMonthlyEnergyHistory,
     getPeakLoadHistory
 } from '../services/apiService';
+import { CSVExportButton } from '../components/common/CSVExportButton';
 
 const HistoryPage = () => {
     const { tarifaKwh, moeda } = useSettings();
@@ -105,7 +106,17 @@ const HistoryPage = () => {
                         Análise detalhada {isSolar ? 'da geração e economia' : 'do consumo e custos'} ao longo do tempo.
                     </p>
                 </div>
-                {/* ... button */}
+                {consumptionData.length > 0 && (
+                    <CSVExportButton
+                        data={consumptionData.map((item, idx) => ({
+                            Date: item.x,
+                            Consumption_kWh: item.y,
+                            Peak_Current_A: peakData[idx]?.y || 0,
+                            Cost: costData[idx]?.y || 0
+                        }))}
+                        filename={`wiresense_history_${timeRange}_${new Date().toISOString().split('T')[0]}.csv`}
+                    />
+                )}
             </div>
 
             {/* Controls */}

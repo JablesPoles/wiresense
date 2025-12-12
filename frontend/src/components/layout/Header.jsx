@@ -6,6 +6,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { DeviceSelector } from '../common/DeviceSelector';
+import { NotificationDropdown } from './NotificationDropdown';
 
 export const Header = ({ isSidebarCollapsed, toggleSidebar, toggleCollapse, isMobile }) => {
   const { currentUser, logout } = useAuth();
@@ -38,10 +39,7 @@ export const Header = ({ isSidebarCollapsed, toggleSidebar, toggleCollapse, isMo
           <DeviceSelector className="w-full py-1.5" />
         </div>
 
-        <button className="p-2 text-muted-foreground hover:text-white hover:bg-white/5 rounded-full transition-colors relative">
-          <Bell size={18} />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border-2 border-[#09090b]" />
-        </button>
+        <NotificationDropdown />
 
         {currentUser && (
           <DropdownMenu.Root>

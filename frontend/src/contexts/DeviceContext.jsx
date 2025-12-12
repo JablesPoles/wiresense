@@ -1,8 +1,8 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { getDevices } from '../services/apiService';
 import { useAuth } from './AuthContext';
 import { db } from '../lib/firebase';
-import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, addDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 const DeviceContext = createContext();
 
@@ -14,6 +14,194 @@ export const DeviceProvider = ({ children }) => {
     const [currentDeviceId, setCurrentDeviceId] = useState(null);
     const [isGenerator, setIsGenerator] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    // Simulation State
+    // Simulation State - Persisted in Session Storage
+    // Simulation State - Persisted in Session Storage
+    const [simulationMode, setSimulationMode] = useState(() => {
+        return sessionStorage.getItem('sim_mode') === 'true';
+    });
+
+    // NEW: Array of active devices
+    // [{ id, name, watts, variance, color, icon }]
+    const [activeSimulations, setActiveSimulations] = useState(() => {
+        try {
+            return JSON.parse(sessionStorage.getItem('sim_active_devices')) || [];
+        } catch { return []; }
+    });
+
+    // Virtual Metering (kWh accumulator)
+    const [simulatedEnergy, setSimulatedEnergy] = useState(() => {
+        return Number(sessionStorage.getItem('sim_energy') || 0);
+    });
+
+    // Computed total power (base)
+    const totalSimulatedWatts = activeSimulations.reduce((acc, curr) => acc + (Number(curr.watts) || 0), 0);
+
+    // Helper: Apply random fluctuation (noise) to look realistic
+    const getSimulatedReading = () => {
+        if (!simulationMode || activeSimulations.length === 0) return 0;
+
+        let total = 0;
+        activeSimulations.forEach(sim => {
+            const power = Number(sim.watts) || 0;
+            const variance = sim.variance || 0.02;
+            const noise = (Math.random() - 0.5) * 2 * (power * variance);
+            total += Math.max(0, power + noise);
+        });
+        return total;
+    };
+
+    // Helper: Apply random fluctuation (noise) to look realistic
+    // variance: percentage of fluctuation (e.g., 0.05 for 5%)
+
+
+    // Start infinite simulation
+    // Start/Add Simulation
+    const startSimulation = (watts, meta = {}) => {
+        const newSim = {
+            id: meta.id || Date.now().toString(),
+            watts: Number(watts),
+            name: meta.name || 'Unknown Device',
+            iconName: meta.iconName, // Store string for JSON persistence
+            color: meta.color,
+            variance: meta.variance || 0.02
+        };
+
+        setActiveSimulations(prev => {
+            const updated = [...prev, newSim];
+            sessionStorage.setItem('sim_active_devices', JSON.stringify(updated));
+            return updated;
+        });
+
+        setSimulationMode(true);
+        sessionStorage.setItem('sim_mode', 'true');
+    };
+
+    const removeSimulation = (id) => {
+        setActiveSimulations(prev => {
+            const updated = prev.filter(s => s.id !== id);
+            sessionStorage.setItem('sim_active_devices', JSON.stringify(updated));
+
+            if (updated.length === 0) {
+                setSimulationMode(false); // Auto-stop if empty
+                sessionStorage.removeItem('sim_mode');
+            }
+            return updated;
+        });
+    };
+
+    const stopSimulation = () => {
+        // Stops ALL
+        setSimulationMode(false);
+        setActiveSimulations([]);
+        setSimulatedEnergy(0);
+
+        sessionStorage.removeItem('sim_mode');
+        sessionStorage.removeItem('sim_active_devices');
+        sessionStorage.removeItem('sim_energy');
+    };
+
+    // Virtual Metering Loop
+    // Virtual Metering Loop (Integrates Total Power)
+    useEffect(() => {
+        let interval;
+        if (simulationMode && activeSimulations.length > 0) {
+            interval = setInterval(() => {
+                // Determine total base power for this second
+                const currentTotalWatts = activeSimulations.reduce((acc, curr) => acc + (Number(curr.watts) || 0), 0);
+
+                // Formula: Watts * (1s / 3600s) / 1000 = kWh per second
+                const energyPerSecond = (currentTotalWatts / 1000) / 3600;
+
+                setSimulatedEnergy(prev => {
+                    const newValue = prev + energyPerSecond;
+                    sessionStorage.setItem('sim_energy', newValue);
+                    return newValue;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [simulationMode, activeSimulations]);
+
+    // Kept for compatibility if needed, but redirected to startSimulation
+    const injectSimulationEvent = (watts, meta) => {
+        startSimulation(watts, meta);
+    };
+
+    // Saved Virtual Devices (Registry) - Cloud Synced
+    const [savedDevices, setSavedDevices] = useState([]);
+
+    // Load/Sync Saved Devices (Firestore or Local)
+    useEffect(() => {
+        let unsubscribe = () => { };
+
+        if (currentUser) {
+            // Cloud Mode: Real-time Listener
+            const colRef = collection(db, 'users', currentUser.uid, 'virtual_devices');
+            unsubscribe = onSnapshot(colRef, (snapshot) => {
+                const devs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setSavedDevices(devs);
+                // Optional: Backup to local for offline start
+                localStorage.setItem('saved_virtual_devices_cache', JSON.stringify(devs));
+            }, (error) => {
+                console.error("Error syncing virtual devices:", error);
+            });
+        } else {
+            // Guest Mode: Local Storage
+            const local = localStorage.getItem('saved_virtual_devices');
+            if (local) {
+                try { setSavedDevices(JSON.parse(local)); } catch (e) { }
+            }
+        }
+
+        return () => unsubscribe();
+    }, [currentUser]);
+
+    const addSavedDevice = async (device) => {
+        if (currentUser) {
+            // Cloud
+            try {
+                // Optimistic Local Update (Instant Feedback)
+                // We add it to state immediately. Real-time sync might override/confirm it later.
+                // Actually, let's wait for cloud to confirm to avoiding "jumping".
+                // But since it's failing, we need a fallback.
+
+                await addDoc(collection(db, 'users', currentUser.uid, 'virtual_devices'), device);
+            } catch (e) {
+                console.error("Error saving virtual device to cloud:", e);
+                alert(`Cloud Save Failed: ${e.message}. Saving locally instead.`);
+
+                // Fallback: Save Locally so user can continue
+                const newDevice = { ...device, id: Date.now().toString() };
+                const updated = [...savedDevices, newDevice];
+                setSavedDevices(updated);
+                localStorage.setItem('saved_virtual_devices', JSON.stringify(updated));
+            }
+        } else {
+            // Local
+            const newDevice = { ...device, id: Date.now().toString() };
+            const updated = [...savedDevices, newDevice];
+            setSavedDevices(updated);
+            localStorage.setItem('saved_virtual_devices', JSON.stringify(updated));
+        }
+    };
+
+    const removeSavedDevice = async (id) => {
+        if (currentUser) {
+            // Cloud
+            try {
+                await deleteDoc(doc(db, 'users', currentUser.uid, 'virtual_devices', id));
+            } catch (e) {
+                console.error("Error deleting virtual device from cloud:", e);
+            }
+        } else {
+            // Local
+            const updated = savedDevices.filter(d => d.id !== id);
+            setSavedDevices(updated);
+            localStorage.setItem('saved_virtual_devices', JSON.stringify(updated));
+        }
+    };
 
     // Load Devices (Local or Cloud)
     useEffect(() => {
@@ -145,8 +333,20 @@ export const DeviceProvider = ({ children }) => {
         currentDeviceId,
         setCurrentDeviceId,
         isGenerator,
+        startSimulation,
+        stopSimulation,
+        injectSimulationEvent,
+        simulationMode,
+        activeSimulations,
+        totalSimulatedWatts,
+        getSimulatedReading,
         loading,
-        addDevice
+        addDevice,
+        savedDevices,
+        addSavedDevice,
+        removeSavedDevice,
+        simulatedEnergy,
+        removeSimulation
     };
 
     return (

@@ -4,6 +4,7 @@ import { useSettings, useDeviceSettings } from '../contexts/SettingsContext';
 import { motion } from 'framer-motion';
 import { DollarSign, Globe, Zap, Bell, Save } from 'lucide-react';
 import { VoltageSelector } from '../components/layout/VoltageSelector';
+import { Switch } from '../components/ui/switch';
 
 const SettingsSection = ({ title, icon: Icon, children, isSolar }) => (
     <div className={`bg-card border rounded-xl p-6 shadow-sm ${isSolar ? 'border-amber-500/20' : 'border-border'}`}>
@@ -37,15 +38,28 @@ const SettingsPageContent = () => {
     const currentDeviceName = devices?.find(d => d.id === currentDeviceId)?.name || currentDeviceId;
 
     const isSolar = isGenerator;
+
+    // Global Settings
+    const {
+        updateSetting, // Still used for notifications? No, notifications are separate.
+        notifications,
+        updateNotificationSetting
+    } = useSettings();
+
+    // Device Settings
     const {
         voltage: deviceVoltage,
         tarifaKwh: deviceTariff,
         budgetLimit: deviceBudget,
         moeda: deviceMoeda,
+        tariffMode: deviceTariffMode, // Device Specific
+        peakStartHour: devicePeakStart, // Device Specific
         setVoltage: setDeviceVoltage,
         setTariff: setDeviceTariff,
         setBudget: setDeviceBudget,
-        setMoeda: setDeviceMoeda
+        setMoeda: setDeviceMoeda,
+        setTariffMode, // Setter
+        setPeakStartHour // Setter
     } = useDeviceSettings(currentDeviceId);
 
     const [localVoltage, setLocalVoltage] = useState(deviceVoltage);
@@ -175,13 +189,125 @@ const SettingsPageContent = () => {
                     </div>
                 </SettingsSection>
 
+                {/* Modelo Tarifário */}
+                <SettingsSection title="Modelo Tarifário" icon={DollarSign} isSolar={isSolar}>
+                    <div className="space-y-6">
+                        {/* Mode Selection */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div
+                                className={`cursor-pointer border rounded-lg p-4 transition-all ${deviceTariffMode !== 'white' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-muted/50 border-border hover:bg-muted'}`}
+                                onClick={() => setTariffMode('conventional')}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="font-semibold text-white">Convencional</span>
+                                    {deviceTariffMode !== 'white' && <div className="w-3 h-3 rounded-full bg-primary" />}
+                                </div>
+                                <p className="text-sm text-muted-foreground">Valor único para kWh em qualquer horário.</p>
+                            </div>
+
+                            <div
+                                className={`cursor-pointer border rounded-lg p-4 transition-all ${deviceTariffMode === 'white' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-muted/50 border-border hover:bg-muted'}`}
+                                onClick={() => setTariffMode('white')}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="font-semibold text-white">Tarifa Branca</span>
+                                    {deviceTariffMode === 'white' && <div className="w-3 h-3 rounded-full bg-primary" />}
+                                </div>
+                                <p className="text-sm text-muted-foreground">Preços variam: Ponta (Caro), Intermediário e Fora de Ponta (Barato).</p>
+                            </div>
+                        </div>
+
+                        {/* White Tariff Config */}
+                        {deviceTariffMode === 'white' && (
+                            <div className="animate-in fade-in slide-in-from-top-4 duration-300 bg-muted/30 rounded-lg p-4 border border-border">
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    Horário de Início da Ponta (Vermelha)
+                                </label>
+                                <p className="text-xs text-muted-foreground mb-4">
+                                    Consulte sua conta de luz. Geralmente começa às 18h ou 19h.
+                                </p>
+                                <select
+                                    className="w-full bg-black/20 border border-white/10 rounded-md p-2 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                                    value={devicePeakStart || 18}
+                                    onChange={(e) => setPeakStartHour(parseInt(e.target.value))}
+                                >
+                                    {Array.from({ length: 24 }).map((_, i) => (
+                                        <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                                    ))}
+                                </select>
+
+                                <div className="mt-4 text-xs text-muted-foreground bg-black/20 p-3 rounded border border-white/5">
+                                    <p><strong>Configuração atual:</strong></p>
+                                    <ul className="list-disc list-inside mt-1 space-y-0.5">
+                                        <li>Ponta (Vermelha): {devicePeakStart || 18}h - {(devicePeakStart || 18) + 3}h</li>
+                                        <li>Intermediária (Amarela): {((devicePeakStart || 18) - 1)}h-{(devicePeakStart || 18)}h e {(devicePeakStart || 18) + 3}h-{(devicePeakStart || 18) + 4}h</li>
+                                        <li>Fora de Ponta (Verde): Restante + Finais de Semana</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Custo Base do kWh ({deviceMoeda})
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={localTarifa}
+                                onChange={(e) => setLocalTarifa(e.target.value)}
+                                onBlur={handleTarifaBlur}
+                                className="w-full bg-black/20 border border-white/10 rounded-md p-2 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {deviceTariffMode === 'white'
+                                    ? "Este valor será usado como referência para a 'Ponta'. O sistema aplicará descontos automáticos para os outros horários na estimativa (Ponta = 100%, Inter = ~70%, Fora = ~40%)."
+                                    : "Valor único cobrado por kWh consumido."}
+                            </p>
+                        </div>
+                    </div>
+                </SettingsSection>
+
                 {/* Alerts Configuration */}
                 <SettingsSection title="Alertas e Notificações" icon={Bell} isSolar={isSolar}>
-                    <div className="space-y-4">
-                        <div className="text-sm text-muted-foreground italic">
-                            Configurações de alerta em breve...
+                    <div className="space-y-6">
+                        {/* High Priority */}
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <label className="text-sm font-medium text-white">Alertas de Alta Prioridade</label>
+                                <p className="text-xs text-muted-foreground">Notificar sobre consumo excessivo (&gt;6kW) ou tempestades.</p>
+                            </div>
+                            <Switch
+                                checked={notifications?.highPriority ?? true}
+                                onCheckedChange={(val) => updateNotificationSetting('highPriority', val)}
+                            />
                         </div>
-                        <div className="pt-4 border-t border-border">
+
+                        {/* Weekly Report */}
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <label className="text-sm font-medium text-white">Relatório Semanal</label>
+                                <p className="text-xs text-muted-foreground">Receba um resumo de custos toda segunda-feira.</p>
+                            </div>
+                            <Switch
+                                checked={notifications?.weeklyReport ?? false}
+                                onCheckedChange={(val) => updateNotificationSetting('weeklyReport', val)}
+                            />
+                        </div>
+
+                        {/* Educational Tips */}
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <label className="text-sm font-medium text-white">Dicas Educativas</label>
+                                <p className="text-xs text-muted-foreground">Exibir dicas de economia no Dashboard.</p>
+                            </div>
+                            <Switch
+                                checked={notifications?.educationalTips ?? true}
+                                onCheckedChange={(val) => updateNotificationSetting('educationalTips', val)}
+                            />
+                        </div>
+
+                        <div className="pt-4 border-t border-border mt-4">
                             <button
                                 onClick={() => {
                                     localStorage.removeItem('tutorialVisto');

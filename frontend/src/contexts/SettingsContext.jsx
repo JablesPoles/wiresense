@@ -19,6 +19,45 @@ export const SettingsProvider = ({ children }) => {
   const [budgetLimit, setBudgetLimit] = useState(0);
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [tariffMode, setTariffMode] = useState('conventional');
+  const [peakStartHour, setPeakStartHour] = useState(18);
+  const [notifications, setNotifications] = useState({
+    highPriority: true,
+    weeklyReport: false,
+    educationalTips: true
+  });
+
+  // State for live currency rates
+  const [exchangeRates, setExchangeRates] = useState({ USD: 1, EUR: 1, BRL: 1 });
+
+  useEffect(() => {
+    // Fetch rates from AwesomeAPI (Free)
+    const fetchRates = async () => {
+      try {
+        // Returns USD-BRL, EUR-BRL
+        const res = await fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL');
+        const data = await res.json();
+
+        const usdBrl = parseFloat(data.USDBRL.bid);
+        const eurBrl = parseFloat(data.EURBRL.bid);
+
+        setExchangeRates({
+          BRL: 1,
+          USD: usdBrl,
+          EUR: eurBrl
+        });
+      } catch (error) {
+        console.error("Failed to fetch exchange rates", error);
+        // Fallback hardcoded (approximate) to prevent crash
+        setExchangeRates({ BRL: 1, USD: 5.0, EUR: 5.5 });
+      }
+    };
+
+    fetchRates();
+    // Refresh every hour
+    const interval = setInterval(fetchRates, 3600000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Load Initial Settings (Local or Cloud)
   useEffect(() => {
@@ -26,11 +65,17 @@ export const SettingsProvider = ({ children }) => {
       setIsLoading(true);
 
       // 1. Load from LocalStorage (Fallback / Default)
-      // We always load local first to have immediate data
       const localVoltage = Number(localStorage.getItem('user_voltage')) || 127;
       const localTarifa = Number(localStorage.getItem('user_tarifa_kwh')) || 0.92;
       const localMoeda = localStorage.getItem('user_moeda') || 'BRL';
       const localBudget = Number(localStorage.getItem('user_budget_limit')) || 0;
+      const localTariffMode = localStorage.getItem('user_tariffMode') || 'conventional';
+      const localPeakStart = Number(localStorage.getItem('user_peakStartHour')) || 18;
+      let localNotifications = { highPriority: true, weeklyReport: false, educationalTips: true };
+      try {
+        const savedNotifs = localStorage.getItem('user_notifications');
+        if (savedNotifs) localNotifications = JSON.parse(savedNotifs);
+      } catch (e) { }
 
       if (currentUser) {
         // 2. If User Logged In, Fetch from Firestore
@@ -44,18 +89,27 @@ export const SettingsProvider = ({ children }) => {
             setTarifaKwh(data.tarifaKwh || localTarifa);
             setMoeda(data.moeda || localMoeda);
             setBudgetLimit(data.budgetLimit || localBudget);
+            setTariffMode(data.tariffMode || localTariffMode);
+            setPeakStartHour(data.peakStartHour || localPeakStart);
+            setNotifications(data.notifications || localNotifications);
           } else {
             // First time login? Sync local to cloud
             await setDoc(docRef, {
               voltage: localVoltage,
               tarifaKwh: localTarifa,
               moeda: localMoeda,
-              budgetLimit: localBudget
+              budgetLimit: localBudget,
+              tariffMode: localTariffMode,
+              peakStartHour: localPeakStart,
+              notifications: localNotifications
             });
             setVoltage(localVoltage);
             setTarifaKwh(localTarifa);
             setMoeda(localMoeda);
             setBudgetLimit(localBudget);
+            setTariffMode(localTariffMode);
+            setPeakStartHour(localPeakStart);
+            setNotifications(localNotifications);
           }
         } catch (error) {
           console.error("Error loading settings from cloud:", error);
@@ -64,6 +118,7 @@ export const SettingsProvider = ({ children }) => {
           setTarifaKwh(localTarifa);
           setMoeda(localMoeda);
           setBudgetLimit(localBudget);
+          setNotifications(localNotifications);
         }
       } else {
         // Not logged in -> Use Local
@@ -71,6 +126,9 @@ export const SettingsProvider = ({ children }) => {
         setTarifaKwh(localTarifa);
         setMoeda(localMoeda);
         setBudgetLimit(localBudget);
+        setTariffMode(localTariffMode);
+        setPeakStartHour(localPeakStart);
+        setNotifications(localNotifications);
       }
       setIsLoading(false);
     };
@@ -82,14 +140,16 @@ export const SettingsProvider = ({ children }) => {
   // Helper to save setting
   const saveSetting = async (key, value) => {
     // 1. Local Persistence (Always keep local in sync for offline/optimistic)
-    localStorage.setItem(`user_${key}`, value);
+    const valToSave = typeof value === 'object' ? JSON.stringify(value) : value;
+    localStorage.setItem(`user_${key}`, valToSave);
 
     // 2. Cloud Persistence
     if (currentUser) {
       try {
         const docRef = doc(db, 'users', currentUser.uid, 'settings', 'preferences');
         // Use setDoc with merge to ensure document creation
-        await setDoc(docRef, { [key === 'budget_limit' ? 'budgetLimit' : (key === 'tarifa_kwh' ? 'tarifaKwh' : key)]: value }, { merge: true });
+        const fieldKey = key === 'budget_limit' ? 'budgetLimit' : (key === 'tarifa_kwh' ? 'tarifaKwh' : key);
+        await setDoc(docRef, { [fieldKey]: value }, { merge: true });
       } catch (e) {
         console.error("Error pushing setting to cloud:", e);
       }
@@ -121,6 +181,28 @@ export const SettingsProvider = ({ children }) => {
     if (!isNaN(val)) {
       setBudgetLimit(val);
       saveSetting('budget_limit', val);
+    }
+  };
+
+  const updateSetting = (key, value) => {
+    if (key === 'tariffMode') {
+      setTariffMode(value);
+      saveSetting('tariffMode', value);
+    }
+    if (key === 'peakStartHour') {
+      setPeakStartHour(value);
+      saveSetting('peakStartHour', value);
+    }
+  };
+
+  const updateNotificationSetting = (key, value) => {
+    const newNotifs = { ...notifications, [key]: value };
+    setNotifications(newNotifs);
+    // Local
+    localStorage.setItem('user_notifications', JSON.stringify(newNotifs));
+    // Cloud (utilize existing safe saver)
+    if (currentUser) {
+      saveSetting('notifications', newNotifs);
     }
   };
 
@@ -172,9 +254,15 @@ export const SettingsProvider = ({ children }) => {
     updateMoeda,
     budgetLimit,
     updateBudgetLimit,
+    tariffMode,
+    peakStartHour,
+    updateSetting,
     getDeviceSetting,
     updateDeviceSetting,
-    settingsVersion
+    settingsVersion,
+    exchangeRates,
+    notifications,
+    updateNotificationSetting
   };
 
   return (
@@ -193,21 +281,27 @@ export const useSettings = () => {
 };
 
 export const useDeviceSettings = (deviceId) => {
-  const { getDeviceSetting, updateDeviceSetting, voltage, tarifaKwh, budgetLimit, moeda, settingsVersion } = useSettings();
+  const { getDeviceSetting, updateDeviceSetting, voltage, tarifaKwh, budgetLimit, moeda, settingsVersion, tariffMode, peakStartHour } = useSettings();
 
   const deviceVoltage = React.useMemo(() => getDeviceSetting(deviceId, 'voltage', voltage), [deviceId, settingsVersion, voltage]);
   const deviceTariff = React.useMemo(() => getDeviceSetting(deviceId, 'tarifa', tarifaKwh), [deviceId, settingsVersion, tarifaKwh]);
   const deviceBudget = React.useMemo(() => getDeviceSetting(deviceId, 'budget', budgetLimit), [deviceId, settingsVersion, budgetLimit]);
   const deviceMoeda = React.useMemo(() => getDeviceSetting(deviceId, 'moeda', moeda), [deviceId, settingsVersion, moeda]);
+  const deviceTariffMode = React.useMemo(() => getDeviceSetting(deviceId, 'tariffMode', tariffMode), [deviceId, settingsVersion, tariffMode]);
+  const devicePeakStart = React.useMemo(() => getDeviceSetting(deviceId, 'peakStartHour', peakStartHour), [deviceId, settingsVersion, peakStartHour]);
 
   return {
     voltage: deviceVoltage,
     tarifaKwh: deviceTariff,
     budgetLimit: deviceBudget,
     moeda: deviceMoeda,
+    tariffMode: deviceTariffMode,
+    peakStartHour: devicePeakStart,
     setVoltage: (v) => updateDeviceSetting(deviceId, 'voltage', v),
     setTariff: (v) => updateDeviceSetting(deviceId, 'tarifa', v),
     setBudget: (v) => updateDeviceSetting(deviceId, 'budget', v),
-    setMoeda: (v) => updateDeviceSetting(deviceId, 'moeda', v)
+    setMoeda: (v) => updateDeviceSetting(deviceId, 'moeda', v),
+    setTariffMode: (v) => updateDeviceSetting(deviceId, 'tariffMode', v),
+    setPeakStartHour: (v) => updateDeviceSetting(deviceId, 'peakStartHour', v)
   };
 };
