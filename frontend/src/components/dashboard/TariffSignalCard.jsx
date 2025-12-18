@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Zap, AlertTriangle, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const TariffSignalCard = () => {
     const { tariffMode, peakStartHour, exchangeRates } = useSettings();
+    const { t } = useLanguage();
     const [status, setStatus] = useState('off-peak'); // off-peak, intermediate, peak
     const [timeLeft, setTimeLeft] = useState('');
 
@@ -11,7 +13,7 @@ export const TariffSignalCard = () => {
     const PEAK_DURATION = 3;
 
     const getStatus = () => {
-        if (tariffMode !== 'white') return { status: 'conventional', label: 'Convencional', color: 'emerald' };
+        if (tariffMode !== 'white') return { status: 'conventional', label: t('conventional'), color: 'emerald' };
 
         const now = new Date();
         const hour = now.getHours();
@@ -19,7 +21,7 @@ export const TariffSignalCard = () => {
         const day = now.getDay(); // 0 = Sun, 6 = Sat
 
         // Weekends are always Off-Peak
-        if (day === 0 || day === 6) return { status: 'off-peak', label: 'Fora de Ponta', color: 'emerald' };
+        if (day === 0 || day === 6) return { status: 'off-peak', label: t('off_peak'), color: 'emerald' };
 
         // Normalize time to minutes for easier comparison
         const currentMinutes = hour * 60 + minute;
@@ -33,16 +35,16 @@ export const TariffSignalCard = () => {
 
         // Check Peak (Ponta)
         if (currentMinutes >= peakStartMin && currentMinutes < peakEndMin) {
-            return { status: 'peak', label: 'Ponta (Caro)', color: 'red' };
+            return { status: 'peak', label: t('peak_expensive'), color: 'red' };
         }
 
         // Check Intermediate (Intermediário)
         if ((currentMinutes >= inter1StartMin && currentMinutes < peakStartMin) ||
             (currentMinutes >= inter2StartMin && currentMinutes < inter2EndMin)) {
-            return { status: 'intermediate', label: 'Intermediário', color: 'yellow' };
+            return { status: 'intermediate', label: t('intermediate'), color: 'yellow' };
         }
 
-        return { status: 'off-peak', label: 'Fora de Ponta', color: 'emerald' };
+        return { status: 'off-peak', label: t('off_peak'), color: 'emerald' };
     };
 
     useEffect(() => {
@@ -57,7 +59,7 @@ export const TariffSignalCard = () => {
         update();
         const interval = setInterval(update, 60000); // Update every minute
         return () => clearInterval(interval);
-    }, [tariffMode, peakStartHour]);
+    }, [tariffMode, peakStartHour, t]);
 
     if (tariffMode === 'conventional') return null; // Don't show if not in White Tariff mode
 
@@ -84,9 +86,9 @@ export const TariffSignalCard = () => {
 
     const getRecommendation = () => {
         switch (config.status) {
-            case 'peak': return "Tarifa mais cara! Evite usar chuveiro, ferro e máquinas agora.";
-            case 'intermediate': return "Tarifa subindo. Atenção ao consumo.";
-            case 'off-peak': return "Melhor horário para usar eletrodomésticos pesados.";
+            case 'peak': return t('peak_warning');
+            case 'intermediate': return t('intermediate_warning');
+            case 'off-peak': return t('off_peak_recommendation');
             default: return "";
         }
     };
@@ -103,7 +105,7 @@ export const TariffSignalCard = () => {
                     </div>
                     <div>
                         <h3 className="text-lg font-bold flex items-center gap-2">
-                            Tarifa Branca: {config.label}
+                            {t('white_tariff')}: {config.label}
                         </h3>
                         <p className="text-sm opacity-90 max-w-[250px]">
                             {getRecommendation()}

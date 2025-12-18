@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, Check, Smile, Plug, Wifi, Settings, Activity, Zap } from 'lucide-react';
 
 // Passos do tutorial, cada um com título, descrição e ícone
@@ -55,6 +55,7 @@ const Tutorial = ({ onComplete }) => {
 
   const isLastStep = currentStep === tutorialSteps.length - 1;
   const stepContent = tutorialSteps[currentStep];
+  const StepIcon = stepContent?.icon;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
@@ -89,14 +90,14 @@ const Tutorial = ({ onComplete }) => {
           >
             <div className="w-32 h-32 mb-8 bg-muted/30 rounded-full flex items-center justify-center border border-primary/20 shadow-inner">
               {/* Render Icon Component */}
-              <stepContent.icon size={64} className="text-primary animate-pulse" />
+              {StepIcon && <StepIcon size={64} className="text-primary animate-pulse" />}
             </div>
 
             <h2 className="text-2xl font-bold text-foreground mb-3">
-              {stepContent.title}
+              {stepContent?.title}
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              {stepContent.description}
+              {stepContent?.description}
             </p>
           </motion.div>
         </AnimatePresence>

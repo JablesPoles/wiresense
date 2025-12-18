@@ -38,12 +38,12 @@ export const AuthProvider = ({ children }) => {
         return unsubscribe;
     }, []);
 
-    const value = {
+    const value = React.useMemo(() => ({
         currentUser,
         loginGoogle,
         logout,
         loading
-    };
+    }), [currentUser, loading]);
 
     return (
         <AuthContext.Provider value={value}>

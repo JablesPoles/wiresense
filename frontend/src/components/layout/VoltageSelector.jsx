@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 /**
  * Componente para seleção da voltagem da rede elétrica.
  * Permite escolher valores padrão ou customizados.
  */
 export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
+  const { t } = useLanguage();
   const standardVoltages = [110, 127, 220];
   const isCustom = !standardVoltages.includes(selectedVoltage);
 
@@ -43,7 +45,7 @@ export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
   return (
     <div>
       <label htmlFor="voltage-selector" className="block text-sm font-medium text-gray-400 mb-2">
-        Selecione a Voltagem da Rede
+        {t('network_voltage')}
       </label>
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         {/* Select padrão */}
@@ -56,7 +58,7 @@ export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
           {standardVoltages.map((v) => (
             <option key={v} value={v}>{v}V</option>
           ))}
-          <option value="custom">Customizada...</option>
+          <option value="custom">{t('custom')}...</option>
         </select>
 
         {/* Input customizado */}
@@ -65,7 +67,7 @@ export const VoltageSelector = ({ selectedVoltage, onVoltageChange }) => {
             type="number"
             value={customValue}
             onChange={handleCustomInputChange}
-            placeholder="Digite a voltagem"
+            placeholder={t('enter_voltage')}
             className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-1/2 p-2.5"
             autoFocus
           />

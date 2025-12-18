@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth'; // Import Firebase auth directly for this page if needed, or stick to context
+import { Zap, Mail, Lock, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const LoginPage = () => {
     const { loginGoogle } = useAuth();
@@ -12,6 +11,131 @@ const LoginPage = () => {
     const [activeTab, setActiveTab] = useState('google'); // 'google' | 'email'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const canvasRef = React.useRef(null);
+
+    // Particle Network Animation
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let animationFrameId;
+        let particles = [];
+
+        // Mouse state for interaction
+        const mouse = { x: null, y: null, radius: 150 };
+
+        const handleMouseMove = (event) => {
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+
+        // Colors: Cyan, Purple, Pink, Emerald, Amber (RGB)
+        const colors = [
+            '6, 182, 212',   // Cyan
+            '168, 85, 247',  // Purple
+            '236, 72, 153',  // Pink
+            '16, 185, 129',  // Emerald
+            '245, 158, 11'   // Amber
+        ];
+
+        const init = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            particles = [];
+            const particleCount = window.innerWidth < 768 ? 30 : 80; // Mobile: 30, Desktop: 80
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.5, // Slow velocity
+                    vy: (Math.random() - 0.5) * 0.5,
+                    size: Math.random() * 2 + 2, // 2px - 4px
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+        };
+
+        const render = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update and Draw Particles
+            particles.forEach((p, i) => {
+                // Mouse Repulsion logic
+                if (mouse.x != null) {
+                    const dx = mouse.x - p.x;
+                    const dy = mouse.y - p.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < mouse.radius) {
+                        const forceDirectionX = dx / distance;
+                        const forceDirectionY = dy / distance;
+                        const force = (mouse.radius - distance) / mouse.radius;
+                        const directionX = forceDirectionX * force * 0.6; // Push strength
+                        const directionY = forceDirectionY * force * 0.6;
+
+                        p.vx -= directionX;
+                        p.vy -= directionY;
+                    }
+                }
+
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Friction to stabilize movement
+                const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+                if (speed > 1) {
+                    p.vx *= 0.95;
+                    p.vy *= 0.95;
+                }
+
+                // Bounce
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+                // Draw Particle
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${p.color}, 0.8)`; // Bright dots
+                ctx.fill();
+
+                // Draw Connections
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const maxDist = 250; // Connection range
+
+                    if (distance < maxDist) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(${p.color}, ${0.5 * (1 - distance / maxDist)})`; // Brighter lines (0.5 opacity)
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            animationFrameId = requestAnimationFrame(render);
+        };
+
+        init();
+        render();
+
+        const handleResize = () => {
+            init();
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('mousemove', handleMouseMove);
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, []);
 
     const handleGoogleLogin = async () => {
         try {
@@ -24,7 +148,7 @@ const LoginPage = () => {
             }, 100);
         } catch (err) {
             console.error(err);
-            setError('Falha ao autenticar com Google.');
+            setError('Fail to authenticate with Google.');
         } finally {
             setLoading(false);
         }
@@ -36,72 +160,98 @@ const LoginPage = () => {
         try {
             setError('');
             setLoading(true);
-
-            // Email login not fully implemented in this demo - simulating delay
+            // Email login simulation
             await new Promise(r => setTimeout(r, 1000));
-            setError('Login por email indisponível. Utilize Google.');
+            setError('Email login temporarily disabled. Please use Google.');
         } catch (err) {
-            setError('Erro ao entrar.');
+            setError('Error logging in.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[#09090b]">
-            {/* Rich Background */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-            <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-emerald-500 opacity-20 blur-[100px]"></div>
-            <div className="absolute right-0 bottom-0 -z-10 h-[310px] w-[310px] rounded-full bg-cyan-500 opacity-20 blur-[100px]"></div>
+        <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-[#050505] text-white selection:bg-cyan-500/30">
+            {/* Dynamic Background: Canvas Network */}
+            <canvas
+                ref={canvasRef}
+                className="absolute inset-0 z-0 opacity-80"
+            />
 
-            <div className="w-full max-w-md bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative z-10">
-                <div className="p-8">
+            {/* Grid Overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+
+            {/* Main Card */}
+            <div className="w-full max-w-[420px] relative z-10 perspective-1000">
+                <div className="relative bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-white/5 animate-in fade-in zoom-in-95 duration-500 p-8">
+
                     {/* Header */}
-                    <div className="flex flex-col items-center mb-8">
-                        <div className="p-3 mb-4 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-white/10 shadow-lg shadow-emerald-900/20">
-                            <Zap className="w-8 h-8 text-cyan-400" />
+                    <div className="flex flex-col items-center mb-10 text-center space-y-4">
+                        <div className="relative group cursor-default">
+                            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-2xl blur-lg opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
+                            <div className="relative p-4 bg-background/50 border border-white/10 rounded-2xl backdrop-blur-md shadow-xl">
+                                <Zap className="w-8 h-8 text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 to-emerald-400 fill-cyan-400/10" />
+                            </div>
                         </div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight">Wiresense</h1>
-                        <p className="text-gray-400 mt-2 text-center">Gestão de energia inteligente</p>
+
+                        <div>
+                            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-br from-white via-white/90 to-white/50 bg-clip-text text-transparent mb-2">
+                                Wiresense
+                            </h1>
+                            <p className="text-sm font-medium tracking-widest text-cyan-500/80 uppercase mb-1">
+                                Monitor • Manage • Master
+                            </p>
+                        </div>
                     </div>
 
                     {/* Tabs */}
-                    <div className="grid grid-cols-2 gap-1 bg-white/5 p-1 rounded-xl mb-6">
+                    <div className="grid grid-cols-2 p-1 mb-8 bg-black/20 rounded-xl border border-white/5">
                         <button
                             onClick={() => setActiveTab('google')}
-                            className={`py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'google' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            className={`flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'google'
+                                ? 'bg-white/10 text-white shadow-sm ring-1 ring-white/5'
+                                : 'text-gray-500 hover:text-gray-300'
+                                }`}
                         >
                             Google
                         </button>
                         <button
                             onClick={() => setActiveTab('email')}
-                            className={`py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'email' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            className={`flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'email'
+                                ? 'bg-white/10 text-white shadow-sm ring-1 ring-white/5'
+                                : 'text-gray-500 hover:text-gray-300'
+                                }`}
                         >
                             Email
                         </button>
                     </div>
 
+                    {/* Error Message */}
                     {error && (
-                        <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-400 text-sm">
-                            <div className="w-1 h-1 bg-red-400 rounded-full" />
+                        <div className="mb-6 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-sm animate-in slide-in-from-top-2">
+                            <CheckCircle2 className="w-4 h-4 shrink-0" />
                             {error}
                         </div>
                     )}
 
-                    {/* Content */}
-                    <div className="min-h-[200px] transition-all">
+                    {/* Forms */}
+                    <div className="relative min-h-[160px]">
                         {activeTab === 'google' ? (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-                                <p className="text-sm text-center text-gray-400 mb-6">
-                                    Utilize sua conta Google para acesso rápido e seguro.
-                                </p>
+                            <div className="animate-in fade-in slide-in-from-left-4 duration-300 space-y-6">
+                                <div className="space-y-2 text-center">
+                                    <h3 className="text-lg font-semibold text-white">Welcome Back</h3>
+                                    <p className="text-sm text-gray-400 max-w-[280px] mx-auto leading-relaxed">
+                                        Use your Google account to access your dashboard securely and instantly.
+                                    </p>
+                                </div>
+
                                 <button
                                     onClick={handleGoogleLogin}
                                     disabled={loading}
-                                    className="w-full group relative flex items-center justify-center gap-3 bg-white text-black font-semibold py-3 px-4 rounded-xl hover:bg-gray-100 transition-all active:scale-[0.98] disabled:opacity-70"
+                                    className="w-full group relative flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-black font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-[0_0_25px_-5px_rgba(255,255,255,0.4)]"
                                 >
                                     {loading ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <Loader2 className="w-5 h-5 animate-spin text-black" />
                                     ) : (
                                         <>
                                             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -110,56 +260,58 @@ const LoginPage = () => {
                                                 <path d="M5.84 14.17c-.22-.66-.35-1.36-.35-2.17s.13-1.51.35-2.17V7.01H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.99l3.66-2.82z" fill="#FBBC05" />
                                                 <path d="M12 4.63c1.61 0 3.1.56 4.28 1.69l3.22-3.21C17.45 1.18 14.96 0 12 0 7.7 0 3.99 2.47 2.18 7.01l3.66 2.82c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                                             </svg>
-                                            <span>Entrar com Google</span>
-                                            <ArrowRight size={16} className="opacity-0 -ml-4 group-hover:opacity-50 group-hover:ml-0 transition-all" />
+                                            <span className="tracking-wide">Continue with Google</span>
+                                            <ArrowRight className="w-4 h-4 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300 text-black/50" />
                                         </>
                                     )}
                                 </button>
                             </div>
                         ) : (
-                            <form onSubmit={handleEmailLogin} className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-gray-400 uppercase">Email</label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
+                            <form onSubmit={handleEmailLogin} className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Email Address</label>
+                                    <div className="relative group">
+                                        <Mail className="absolute left-3 top-3.5 text-gray-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
                                         <input
                                             type="email"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
-                                            placeholder="nome@exemplo.com"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all"
+                                            placeholder="name@example.com"
                                         />
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-gray-400 uppercase">Senha</label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Password</label>
+                                    <div className="relative group">
+                                        <Lock className="absolute left-3 top-3.5 text-gray-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
                                         <input
                                             type="password"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all"
                                             placeholder="••••••••"
                                         />
                                     </div>
                                 </div>
+
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-semibold py-3 px-4 rounded-xl transition-all active:scale-[0.98] disabled:opacity-70 mt-2"
+                                    className="w-full mt-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 shadow-lg shadow-cyan-900/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
-                                    {loading ? <Loader2 className="animate-spin" /> : 'Entrar na Conta'}
+                                    {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Sign In'}
                                 </button>
                             </form>
                         )}
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="p-4 border-t border-white/5 bg-white/5 text-center">
-                    <p className="text-xs text-muted-foreground">
-                        Protegido por criptografia de ponta a ponta.
+                {/* Footer simple link */}
+                <div className="text-center mt-8">
+                    <p className="text-xs text-gray-500 hover:text-gray-400 transition-colors cursor-pointer">
+                        Secure Enterprise Access • v2.4.0
                     </p>
                 </div>
             </div>

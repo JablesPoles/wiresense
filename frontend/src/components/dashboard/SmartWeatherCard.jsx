@@ -4,6 +4,7 @@ import { Cloud, CloudRain, Sun, CloudLightning, Wind, Thermometer, MapPin, Moon,
 import { Skeleton } from '../common/Skeleton';
 import { useSmartTips } from '../../hooks/useSmartTips';
 import { useNotifications } from '../../contexts/NotificationContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const SmartWeatherCard = ({
     weather,
@@ -22,6 +23,7 @@ export const SmartWeatherCard = ({
     monthlyCost,
     budgetLimit
 }) => {
+    const { t } = useLanguage();
 
     // --- Weather Logic ---
     const getWeatherIcon = (code, isDay) => {
@@ -34,11 +36,11 @@ export const SmartWeatherCard = ({
     };
 
     const getConditionText = (code) => {
-        if (code === 0) return "Céu Limpo";
-        if (code >= 1 && code <= 3) return "Parcialmente Nublado";
-        if (code >= 51 && code <= 67) return "Chuva";
-        if (code >= 95) return "Tempestade";
-        return "Normal";
+        if (code === 0) return t('clear_sky');
+        if (code >= 1 && code <= 3) return t('partly_cloudy');
+        if (code >= 51 && code <= 67) return t('rain');
+        if (code >= 95) return t('storm');
+        return t('normal');
     };
 
     // --- Smart Tips Logic ---
@@ -63,34 +65,18 @@ export const SmartWeatherCard = ({
 
     // --- Robust Rotation Logic ---
     useEffect(() => {
-        // If we don't have enough tips to rotate, stop.
         if (tips.length <= 1) return;
-
         const tick = () => {
             const currentTips = tipsRef.current;
             const currentIndex = indexRef.current;
-
-            // Determine duration based on CURRENT tip priority
             const currentPriority = currentTips[currentIndex]?.priority;
             const duration = (currentPriority === 'critical' || currentPriority === 'warning') ? 15000 : 8000;
-
             const nextIndex = (currentIndex + 1) % currentTips.length;
-
-            // Allow time for user to read before switching
-            // We use a recursive setTimeout pattern for variable duration
             timeoutRef.current = setTimeout(() => {
                 setCurrentTipIndex(nextIndex);
-                // The state update will trigger re-render -> update ref -> effect re-runs?
-                // No, we need to manually trigger next loop if we use useEffect([]) or similar.
-                // BEST APPROACH: Just use standard effect that depends on Index but is CLEAN.
             }, duration);
         };
 
-        // Start the cycle
-        // We need to clear previous timeout if index changes to avoid double-firing
-        // But we want the duration to be based on the *current* tip.
-
-        // Let's execute the logic:
         const currentPriority = tips[currentTipIndex]?.priority;
         const duration = (currentPriority === 'critical' || currentPriority === 'warning') ? 15000 : 8000;
 
@@ -99,16 +85,7 @@ export const SmartWeatherCard = ({
         }, duration);
 
         return () => clearTimeout(timer);
-    }, [currentTipIndex, tips.length]); // Depend on index (to schedule next) and length (to handle empty/single).
-    // Note: We intentionally exclude 'tips' content to avoid resetting the timer when data updates.
-    // relying on 'tipsRef' inside a setState function or similar isn't needed if we just schedule next switch.
-    // Effect re-runs when index changes. Timer is set.
-    // IF 'tips' updates mid-wait, 'tips.length' might change.
-    // If 'tips.length' changes, effect re-runs, resetting timer. 
-    // THIS IS THE BUG! If activeTips changes every 5s, the timer resets every 5s.
-    // User stuck on Tip 0 if updates < 8s.
-
-    // FIX: Ref-based timer that ignores props updates.
+    }, [currentTipIndex, tips.length]);
     const timeoutRef = React.useRef(null);
 
     useEffect(() => {
@@ -123,33 +100,19 @@ export const SmartWeatherCard = ({
 
             timeoutRef.current = setTimeout(() => {
                 setCurrentTipIndex(prev => (prev + 1) % tipsRef.current.length);
-                // We don't need to recursively call here because state update triggers this effect? 
-                // No, we want this effect to run ONCE and manage its own recursive timeout loop if possible,
-                // OR allow the state change to trigger a simple effect.
-                // But we want to IGNORE external prop changes.
             }, duration);
         };
 
-        // Clear existing
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-        // Schedule next
         scheduleNext();
 
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
-    }, [currentTipIndex]); // DEPEND ONLY ON INDEX.
-    // Since 'tips' is not a dependency, this effect WON'T re-run when tips change.
-    // It only re-runs when we actually switch tips.
-    // This solves the 'stuck' issue caused by frequent data updates.
-    // Note: If tips update but index doesn't change, we effectively keep the old timer. 
-    // This is DESIRED to prevent the "reset every 5s" bug.
-    // However, if the priority of the *displayed* tip changes mid-view (rare, same ID), we might want to extend? 
-    // For now, ignoring mid-view priority changes is fine to fix the "stuck" bug.
+    }, [currentTipIndex]);
 
     // Safe access
-    const currentTip = tips[currentTipIndex] || { message: "Analisando sistema...", icon: Zap, priority: 'info', color: "blue" };
+    const currentTip = tips[currentTipIndex] || { message: t('analyzing_system'), icon: Zap, priority: 'info', color: "blue" };
 
     // Duration for animation sync
     const animationDuration = (currentTip.priority === 'critical' || currentTip.priority === 'warning') ? 15 : 8;
@@ -240,7 +203,7 @@ export const SmartWeatherCard = ({
                                         autoFocus
                                         type="text"
                                         className="bg-black/40 border border-white/20 rounded-lg px-3 py-1 text-sm text-white w-48 focus:outline-none focus:border-primary shadow-lg"
-                                        placeholder="Cidade..."
+                                        placeholder={t('city_placeholder')}
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         onKeyDown={(e) => { if (e.key === 'Escape') setIsSearching(false); }}
@@ -335,12 +298,12 @@ export const SmartWeatherCard = ({
                                 <div className="flex items-center gap-2 mb-1">
                                     {currentTip.priority === 'critical' && (
                                         <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white shadow-lg shadow-red-900/50 uppercase tracking-wide animate-pulse">
-                                            <AlertTriangle size={10} className="fill-current" /> Alta Prioridade
+                                            <AlertTriangle size={10} className="fill-current" /> {t('high_priority')}
                                         </span>
                                     )}
-                                    {currentTip.priority === 'warning' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/20 uppercase tracking-wide">Atenção</span>}
-                                    {currentTip.priority === 'success' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 uppercase tracking-wide">Oportunidade</span>}
-                                    {!currentTip.priority || currentTip.priority === 'info' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-500 border border-blue-500/20 uppercase tracking-wide">Dica</span>}
+                                    {currentTip.priority === 'warning' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/20 uppercase tracking-wide">{t('warning')}</span>}
+                                    {currentTip.priority === 'success' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 uppercase tracking-wide">{t('opportunity')}</span>}
+                                    {!currentTip.priority || currentTip.priority === 'info' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-500 border border-blue-500/20 uppercase tracking-wide">{t('tip')}</span>}
                                 </div>
                                 <p className={`text-base font-medium leading-snug transition-colors duration-300 ${currentTip.priority === 'critical' ? 'text-white' : 'text-white/90'}`}>
                                     {currentTip.message}

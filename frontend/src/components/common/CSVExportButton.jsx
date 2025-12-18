@@ -1,12 +1,14 @@
 import React from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '../ui/button';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const CSVExportButton = ({ data, filename = 'export.csv', className }) => {
+    const { t } = useLanguage();
 
     const handleExport = () => {
         if (!data || data.length === 0) {
-            alert("Sem dados para exportar.");
+            alert(t('no_data_export'));
             return;
         }
 
@@ -41,7 +43,7 @@ export const CSVExportButton = ({ data, filename = 'export.csv', className }) =>
             className={`flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/10 ${className}`}
         >
             <Download size={14} />
-            Exportar CSV
+            {t('export_csv')}
         </button>
     );
 };

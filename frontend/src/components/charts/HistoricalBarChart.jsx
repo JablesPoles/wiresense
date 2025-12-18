@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 /**
  * Componente de gráfico de barras para dados históricos (diário ou mensal)
  */
 export function HistoricalBarChart({ title, unit, data, dateFormat = 'day-month', limit = 7 }) {
+  const { language } = useLanguage();
   const [series, setSeries] = useState([{ name: title, data: [] }]);
   const [options, setOptions] = useState({
     theme: { mode: 'dark' },
@@ -37,13 +39,13 @@ export function HistoricalBarChart({ title, unit, data, dateFormat = 'day-month'
         date.setUTCMonth(today.getUTCMonth() - i, 1);
         dateRange.push({
           key: getFormattedMonth(date),
-          label: date.toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' }),
+          label: date.toLocaleDateString(language, { month: 'short', timeZone: 'UTC' }),
         });
       } else {
         date.setUTCDate(today.getUTCDate() - i);
         dateRange.push({
           key: getFormattedDate(date),
-          label: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }),
+          label: date.toLocaleDateString(language, { day: '2-digit', month: '2-digit', timeZone: 'UTC' }),
         });
       }
     }

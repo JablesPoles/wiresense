@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Download, FileText, Printer, Zap, Sun, Info } from 'lucide-react';
-import { useSettings, useDeviceSettings } from '../contexts/SettingsContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { useDevice } from '../contexts/DeviceContext';
+import { useAchievements } from '../contexts/AchievementsContext';
 import { getEnergySummary } from '../services/apiService';
+import { useLanguage } from '../contexts/LanguageContext';
+import { PageTransition } from '../components/layout/PageTransition';
 
 const ReportsPage = () => {
     const { moeda, tarifaKwh: globalTariff, exchangeRates } = useSettings();
     const { devices } = useDevice();
+    const { incrementStat } = useAchievements();
+    const { t } = useLanguage();
 
     const [reportCurrency, setReportCurrency] = useState(moeda);
     const currency = reportCurrency === 'BRL' ? 'R$' : (reportCurrency === 'EUR' ? '€' : '$');
@@ -17,6 +22,43 @@ const ReportsPage = () => {
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleExportCSV = () => {
+        if (!reportData || reportData.length === 0) return;
+
+        // 1. Headers
+        const headers = ["ID", t('device_name'), t('device_type'), "Consumo/Geracao (kWh)", t('base_tariff'), `Custo (${reportCurrency})`, "Moeda Original"];
+
+        // 2. Rows
+        const rows = reportData.map(item => [
+            item.id,
+            item.name,
+            item.isGenerator ? t('generator') : t('consumer'),
+            item.kwh.toFixed(3),
+            item.tariffOriginal.toFixed(2),
+            item.costBrl.toFixed(2),
+            item.moedaOriginal
+        ]);
+
+        // 3. Build CSV string
+        const csvContent = [
+            headers.join(","),
+            ...rows.map(e => e.join(","))
+        ].join("\n");
+
+        // 4. Download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `wiresense_report_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 5. Trigger Achievement
+        incrementStat('exportsCount');
     };
 
     // Conversion Helper
@@ -128,24 +170,16 @@ const ReportsPage = () => {
     const netCost = totalConsumptionCost - totalGenerationSavings;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <PageTransition className="space-y-6">
             {/* Print styles */}
-            <style>{`
-                @media print {
-                  body { background-color: white !important; color: black !important; }
-                  .print\\:hidden, div[class*="fixed inset-0"], .no-print { display: none !important; }
-                  .card { border: 1px solid #ddd; box-shadow: none; break-inside: avoid; }
-                  .text-white { color: black !important; }
-                  .text-muted-foreground { color: #666 !important; }
-                }
-              `}</style>
+
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-                        Relatórios Consolidados
+                        {t('consolidated_reports')}
                     </h1>
-                    <p className="text-muted-foreground">Visão geral do impacto de todos os seus dispositivos.</p>
+                    <p className="text-muted-foreground">{t('reports_desc')}</p>
                 </div>
 
                 {/* Currency Selector */}
@@ -166,7 +200,7 @@ const ReportsPage = () => {
             </div>
 
             {/* Report Card */}
-            <div className="max-w-4xl mx-auto bg-card border border-border rounded-xl p-8 shadow-lg relative overflow-hidden">
+            <div className="w-full mx-auto bg-card border border-border rounded-xl p-6 shadow-lg relative overflow-hidden">
                 {/* Visual Watermark Removed as requested */}
 
                 <div className="flex justify-between items-center mb-8 border-b border-border pb-6 relative z-10">
@@ -175,15 +209,15 @@ const ReportsPage = () => {
                             <FileText size={24} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-white">Relatório Multi-Dispositivo</h2>
+                            <h2 className="text-2xl font-bold text-white">{t('multi_device_report')}</h2>
                             <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                                 <Info size={12} />
-                                Valores estimados baseados em sensores
+                                {t('estimated_values')}
                             </p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Data de Emissão</p>
+                        <p className="text-sm text-muted-foreground">{t('issue_date')}</p>
                         <p className="font-mono font-medium text-white">{new Date().toLocaleDateString()}</p>
                     </div>
                 </div>
@@ -191,22 +225,22 @@ const ReportsPage = () => {
                 {loading ? (
                     <div className="text-center py-10 flex flex-col items-center gap-3">
                         <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        <p className="text-muted-foreground">Calculando dados...</p>
+                        <p className="text-muted-foreground">{t('calculating')}</p>
                     </div>
                 ) : (
                     <div className="space-y-8 relative z-10">
                         {/* Totals */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                                <p className="text-sm text-red-400 mb-1">Custo Consumo</p>
+                                <p className="text-sm text-red-400 mb-1">{t('consumption_cost')}</p>
                                 <p className="text-2xl font-bold text-red-500">~ {currency} {totalConsumptionCost.toFixed(2)}</p>
                             </div>
                             <div className="p-4 rounded-lg bg-emerald-500/10 border border-amber-500/20">
-                                <p className="text-sm text-emerald-400 mb-1">Valor Produzido</p>
+                                <p className="text-sm text-emerald-400 mb-1">{t('produced_value')}</p>
                                 <p className="text-2xl font-bold text-amber-500">~ {currency} {totalGenerationSavings.toFixed(2)}</p>
                             </div>
                             <div className={`p-4 rounded-lg border ${netCost <= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-primary/10 border-primary/20'}`}>
-                                <p className="text-sm text-muted-foreground mb-1">Custo Líquido Estimado</p>
+                                <p className="text-sm text-muted-foreground mb-1">{t('net_estimated_cost')}</p>
                                 <p className={`text-2xl font-bold ${netCost <= 0 ? 'text-emerald-500' : 'text-foreground'}`}>
                                     ~ {currency} {Math.abs(netCost).toFixed(2)}
                                 </p>
@@ -215,16 +249,16 @@ const ReportsPage = () => {
 
                         {/* Breakdown Table */}
                         <div>
-                            <h3 className="font-semibold mb-4 text-lg text-white">Detalhamento por Dispositivo</h3>
+                            <h3 className="font-semibold mb-4 text-lg text-white">{t('device_breakdown')}</h3>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
                                         <tr>
-                                            <th className="px-4 py-3 rounded-l-lg">Dispositivo</th>
-                                            <th className="px-4 py-3">Tipo</th>
-                                            <th className="px-4 py-3 text-right">Consumo/Geração (Mês)</th>
-                                            <th className="px-4 py-3 text-right">Tarifa Base ({moeda})</th>
-                                            <th className="px-4 py-3 rounded-r-lg text-right">Impacto ({reportCurrency})</th>
+                                            <th className="px-4 py-3 rounded-l-lg">{t('device')}</th>
+                                            <th className="px-4 py-3">{t('type')}</th>
+                                            <th className="px-4 py-3 text-right">{t('consumption_generation_month')}</th>
+                                            <th className="px-4 py-3 text-right">{t('base_tariff')} ({moeda})</th>
+                                            <th className="px-4 py-3 rounded-r-lg text-right">{t('impact')} ({reportCurrency})</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
@@ -238,7 +272,7 @@ const ReportsPage = () => {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.isGenerator ? 'bg-emerald-500/10 text-emerald-500 border border-amber-500/20' : 'bg-cyan-500/10 text-cyan-500 border border-violet-500/20'}`}>
-                                                        {item.isGenerator ? 'Gerador' : 'Consumidor'}
+                                                        {item.isGenerator ? t('generator') : t('consumer')}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-mono text-gray-300">{item.kwh.toFixed(1)} kWh</td>
@@ -258,10 +292,10 @@ const ReportsPage = () => {
                         <div className="text-sm text-muted-foreground mt-8 text-center border-t border-border pt-6 flex flex-col items-center gap-2">
                             <p>
                                 <Info size={14} className="inline mr-1" />
-                                <strong>Aviso de Estimativa:</strong> Os valores apresentados são calculados com base em sensores de corrente e configurações do usuário. Não representam uma fatura oficial da concessionária.
+                                <strong>{t('estimation_warning')}:</strong> {t('estimation_warning_text')}
                             </p>
                             <p className="text-xs opacity-60">
-                                Cotações (via AwesomeAPI): USD ~ {exchangeRates?.USD?.toFixed(2)} | EUR ~ {exchangeRates?.EUR?.toFixed(2)}
+                                {t('quotes')} (via AwesomeAPI): USD ~ {exchangeRates?.USD?.toFixed(2)} | EUR ~ {exchangeRates?.EUR?.toFixed(2)}
                             </p>
                         </div>
                     </div>
@@ -274,10 +308,27 @@ const ReportsPage = () => {
                     className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-primary/20 font-medium"
                 >
                     <Printer size={20} />
-                    Imprimir / Salvar PDF
+                    {t('print_pdf')}
+                </button>
+                <button
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all shadow-lg hover:shadow-emerald-500/20 font-medium"
+                >
+                    <Download size={20} />
+                    {t('export_csv')}
                 </button>
             </div>
-        </div>
+            {/* Print styles */}
+            <style>{`
+                @media print {
+                  body { background-color: white !important; color: black !important; }
+                  .print\\:hidden, div[class*="fixed inset-0"], .no-print { display: none !important; }
+                  .card { border: 1px solid #ddd; box-shadow: none; break-inside: avoid; }
+                  .text-white { color: black !important; }
+                  .text-muted-foreground { color: #666 !important; }
+                }
+              `}</style>
+        </PageTransition>
     );
 };
 

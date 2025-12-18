@@ -14,11 +14,14 @@ import {
 import { CSVExportButton } from '../components/common/CSVExportButton';
 
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { PageTransition } from '../components/layout/PageTransition';
 
 const HistoryPage = () => {
     const { tarifaKwh, moeda } = useSettings();
     const { isGenerator, currentDeviceId } = useDevice();
     const { theme } = useTheme();
+    const { t } = useLanguage();
     const currency = moeda === 'BRL' ? 'R$' : (moeda === 'EUR' ? '€' : '$');
 
     // Theme Configuration
@@ -41,8 +44,8 @@ const HistoryPage = () => {
 
     // Configure time range options based on active view mode
     const rangeOptions = viewMode === 'daily'
-        ? [{ label: '7 Dias', value: '7d' }, { label: '30 Dias', value: '30d' }]
-        : [{ label: '6 Meses', value: '6m' }, { label: '12 Meses', value: '1y' }];
+        ? [{ label: t('days_7'), value: '7d' }, { label: t('days_30'), value: '30d' }]
+        : [{ label: t('months_6'), value: '6m' }, { label: t('months_12'), value: '1y' }];
 
     // Reset range when mode changes
     const handleModeChange = (mode) => {
@@ -50,10 +53,14 @@ const HistoryPage = () => {
         setTimeRange(mode === 'daily' ? '7d' : '6m');
     };
 
+    // Loading state
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
         let isMounted = true;
 
         const fetchData = async () => {
+            setIsLoading(true);
             let limit = 7;
             if (timeRange === '30d') limit = 30;
             if (timeRange === '6m') limit = 6;
@@ -86,6 +93,8 @@ const HistoryPage = () => {
                 }
             } catch (error) {
                 console.error("Error fetching history:", error);
+            } finally {
+                if (isMounted) setIsLoading(false);
             }
         };
 
@@ -94,30 +103,56 @@ const HistoryPage = () => {
         return () => { isMounted = false; };
     }, [viewMode, timeRange, tarifaKwh, currentDeviceId]); // Add currentDeviceId
 
-    const handleExport = () => {
-        alert("Exportação de CSV será implementada em breve.");
+
+
+
+    // State for highlighting
+    const [selectedDate, setSelectedDate] = useState('');
+
+    // Reset selected date when data refreshes
+    useEffect(() => {
+        setSelectedDate('');
+    }, [consumptionData]);
+
+    const selectedStats = React.useMemo(() => {
+        if (!selectedDate) return null;
+        const index = consumptionData.findIndex(d => d.x === selectedDate);
+        if (index === -1) return null;
+        return {
+            consumption: consumptionData[index].y,
+            peak: peakData[index]?.y || 0,
+            cost: costData[index]?.y || 0
+        };
+    }, [selectedDate, consumptionData, peakData, costData]);
+
+    const chartSubtitleMap = {
+        '7d': t('days_7'),
+        '30d': t('days_30'),
+        '6m': t('months_6'),
+        '1y': t('months_12')
     };
+    const chartSubtitle = chartSubtitleMap[timeRange] || (viewMode === 'daily' ? t('days_7') : t('months_6'));
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <PageTransition className="space-y-8">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-                        Histórico de {isSolar ? 'Geração' : 'Consumo'}
+                    <h1 className="text-3xl font-bold tracking-tight text-white flex flex-wrap items-center gap-3">
+                        {t('history_of')} {isSolar ? t('generation') : t('consumption')}
                         <span
-                            className="text-sm px-2 py-0.5 rounded-full border transition-colors"
+                            className="text-xs px-3 py-1 rounded-full border font-medium inline-flex items-center justify-center backdrop-blur-md transition-colors"
                             style={{
                                 backgroundColor: `${themeHex}20`,
                                 borderColor: `${themeHex}40`,
-                                color: themeHex
+                                color: `hsl(var(--primary-foreground))`
                             }}
                         >
-                            {isSolar ? 'Produção' : 'Consumo'}
+                            {isSolar ? t('generation') : t('consumption')}
                         </span>
                     </h1>
                     <p className="text-muted-foreground">
-                        Análise detalhada {isSolar ? 'da geração e economia' : 'do consumo e custos'} ao longo do tempo.
+                        {t('detailed_analysis')}
                     </p>
                 </div>
                 {consumptionData.length > 0 && (
@@ -140,7 +175,7 @@ const HistoryPage = () => {
                         onClick={() => handleModeChange('daily')}
                         style={viewMode === 'daily' ? {
                             backgroundColor: themeHex,
-                            color: theme.colors.text,
+                            color: 'hsl(var(--primary-foreground))',
                             boxShadow: `0 0 20px -5px ${themeHex}50`
                         } : {}}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'daily'
@@ -148,13 +183,13 @@ const HistoryPage = () => {
                             : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
-                        Diário
+                        {t('daily')}
                     </button>
                     <button
                         onClick={() => handleModeChange('monthly')}
                         style={viewMode === 'monthly' ? {
                             backgroundColor: themeHex,
-                            color: theme.colors.text,
+                            color: 'hsl(var(--primary-foreground))',
                             boxShadow: `0 0 20px -5px ${themeHex}50`
                         } : {}}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'monthly'
@@ -162,7 +197,7 @@ const HistoryPage = () => {
                             : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
-                        Mensal
+                        {t('monthly')}
                     </button>
                 </div>
 
@@ -171,43 +206,118 @@ const HistoryPage = () => {
                     onRangeChange={setTimeRange}
                     ranges={rangeOptions}
                 />
+
+                {/* Date Highlight Selector */}
+                <div className="w-full md:w-auto mt-2 md:mt-0 md:border-t-0 md:pt-0 border-t border-border/50 pt-2">
+                    <select
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="w-full md:w-[260px] bg-card border border-border rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-primary outline-none cursor-pointer hover:border-primary/50 transition-colors"
+                    >
+                        <option value="">{t('highlight_date') || 'Selecionar data para destacar...'}</option>
+                        {consumptionData.map((d, i) => (
+                            <option key={i} value={d.x}>{d.x}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
+
+            {/* Selected Date Summary */}
+            {selectedDate && selectedStats && (
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                            <Calendar size={20} />
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">{t('selected_date') || 'Data Selecionada'}</p>
+                            <p className="text-lg font-bold text-foreground">{selectedDate}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-8 w-full sm:w-auto">
+                        <div>
+                            <p className="text-xs text-muted-foreground">{t('consumption')}</p>
+                            <p className="font-mono font-bold text-lg">{selectedStats.consumption} <span className="text-xs font-normal text-muted-foreground">kWh</span></p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">{t('peak_current')}</p>
+                            <p className="font-mono font-bold text-lg text-amber-500">{selectedStats.peak} <span className="text-xs font-normal text-muted-foreground">A</span></p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground">{isSolar ? (t('estimated_earnings') || 'Ganho Estimado') : t('estimated_cost')}</p>
+                            <p className="font-mono font-bold text-lg text-emerald-500 flex items-center gap-0.5">
+                                <span className="text-sm">{currency}</span>
+                                {costData.find(d => d.x === selectedDate)?.y || 0}
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => setSelectedDate('')}
+                        className="hidden sm:block text-xs text-muted-foreground hover:text-foreground underline"
+                    >
+                        {t('clear') || 'Limpar'}
+                    </button>
+                </div>
+            )}
 
             {/* Main Charts Grid */}
             <div className="grid grid-cols-1 gap-6">
-                <EnergyHistoryChart
-                    data={consumptionData}
-                    type={viewMode}
-                    unit="kWh"
-                    color={themeHex}
-                    label={isSolar ? 'Geração' : 'Consumo'}
-                />
-                <CostChart
-                    data={costData}
-                    currencySymbol={currency}
-                    color={isSolar ? secondaryHex : '#ef4444'} // Green/Gold for savings, Red for cost. Or use theme logic.
-                />
+                {isLoading ? (
+                    <>
+                        <div className="rounded-xl border border-border bg-card p-4 shadow-sm h-[350px] animate-pulse flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                                <span className="text-sm text-muted-foreground">{t('loading')}</span>
+                            </div>
+                        </div>
+                        <div className="rounded-xl border border-border bg-card p-6 shadow-sm h-[300px] animate-pulse" />
+                    </>
+                ) : (
+                    <>
+                        <EnergyHistoryChart
+                            data={consumptionData}
+                            type={viewMode}
+                            unit="kWh"
+                            color={themeHex}
+                            label={isSolar ? t('generation') : t('consumption')}
+                            subtitle={chartSubtitle}
+                            highlightDate={selectedDate}
+                        />
+                        <CostChart
+                            data={costData}
+                            currencySymbol={currency}
+                            color={isSolar ? secondaryHex : '#ef4444'}
+                            highlightDate={selectedDate}
+                        />
+                    </>
+                )}
             </div>
 
             {/* Secondary Analysis */}
             <div className="grid grid-cols-1 gap-6">
-                <PeakLoadChart data={peakData} color={secondaryHex} />
+                <PeakLoadChart
+                    data={peakData}
+                    color={secondaryHex}
+                    highlightDate={selectedDate}
+                />
                 {/* <HeatmapChart /> */}
             </div>
 
             {/* Detailed Table */}
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-border">
-                    <h3 className="text-lg font-semibold">Detalhamento dos Dados</h3>
+                    <h3 className="text-lg font-semibold">{t('data_breakdown')}</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-muted text-muted-foreground uppercase text-xs">
                             <tr>
-                                <th className="px-6 py-3">Data / Período</th>
-                                <th className="px-6 py-3">Consumo (kWh)</th>
-                                <th className="px-6 py-3">Pico de Corrente (A)</th>
-                                <th className="px-6 py-3">Custo Estimado ({currency})</th>
+                                <th className="px-6 py-3 whitespace-nowrap">{t('date_period')}</th>
+                                <th className="px-6 py-3 whitespace-nowrap">{t('consumption')} (kWh)</th>
+                                <th className="px-6 py-3 whitespace-nowrap">{t('peak_current')}</th>
+                                <th className="px-6 py-3 whitespace-nowrap">{t('estimated_cost')} ({currency})</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -216,10 +326,10 @@ const HistoryPage = () => {
                                 const cost = costData[index]?.y || '-';
                                 return (
                                     <tr key={index} className="hover:bg-muted/50 transition-colors">
-                                        <td className="px-6 py-4 font-medium">{item.x}</td>
-                                        <td className="px-6 py-4">{item.y}</td>
-                                        <td className="px-6 py-4 text-amber-500 font-medium">{peak}</td>
-                                        <td className="px-6 py-4 text-emerald-500 font-mono">{cost}</td>
+                                        <td className="px-6 py-4 font-medium whitespace-nowrap">{item.x}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{item.y}</td>
+                                        <td className="px-6 py-4 text-amber-500 font-medium whitespace-nowrap">{peak}</td>
+                                        <td className="px-6 py-4 text-emerald-500 font-mono whitespace-nowrap">{cost}</td>
                                     </tr>
                                 );
                             })}
@@ -227,7 +337,7 @@ const HistoryPage = () => {
                     </table>
                 </div>
             </div>
-        </div>
+        </PageTransition >
     );
 };
 

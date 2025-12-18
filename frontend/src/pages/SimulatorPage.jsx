@@ -2,11 +2,32 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Droplets, Wind, Car, Tv, Laptop, Lightbulb, Coffee, Gamepad2, Snowflake, ChevronDown, ChevronUp } from 'lucide-react';
 import { useDevice } from '../contexts/DeviceContext';
+import { useAchievements } from '../contexts/AchievementsContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { PageTransition } from '../components/layout/PageTransition';
 
 const SimulatorPage = () => {
     const { startSimulation, stopSimulation, simulationMode, activeSimulations, totalSimulatedWatts, savedDevices, addSavedDevice, removeSavedDevice, removeSimulation } = useDevice();
+    const { updateStat, incrementStat } = useAchievements();
+    const { t } = useLanguage();
     const [isAdding, setIsAdding] = React.useState(false);
     const [isExpanded, setIsExpanded] = React.useState(false); // Collapsible state for Active Devices
+
+    // Achievement: Observer
+    React.useEffect(() => {
+        updateStat('visitedSimulator', true);
+    }, []);
+
+    // Achievement: Overload Monitor (> 50A)
+    React.useEffect(() => {
+        if (simulationMode && totalSimulatedWatts > 0) {
+            const amps = totalSimulatedWatts / 127; // Estimate
+            if (amps > 50) {
+                updateStat('maxCurrentHit', amps);
+            }
+        }
+    }, [simulationMode, totalSimulatedWatts]);
 
     // Helpers
     const availableIcons = [
@@ -24,30 +45,29 @@ const SimulatorPage = () => {
     ];
 
     const availableColors = [
-        { name: "Blue", class: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
-        { name: "Cyan", class: "text-cyan-400 bg-cyan-400/10 border-cyan-400/20" },
-        { name: "Emerald", class: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
-        { name: "Green", class: "text-green-400 bg-green-400/10 border-green-400/20" },
-        { name: "Yellow", class: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" },
-        { name: "Orange", class: "text-orange-400 bg-orange-400/10 border-orange-400/20" },
-        { name: "Red", class: "text-red-400 bg-red-400/10 border-red-400/20" },
-        { name: "Pink", class: "text-pink-400 bg-pink-400/10 border-pink-400/20" },
-        { name: "Purple", class: "text-purple-400 bg-purple-400/10 border-purple-400/20" },
+        { name: t('color_blue'), class: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+        { name: t('color_cyan'), class: "text-cyan-400 bg-cyan-400/10 border-cyan-400/20" },
+        { name: t('color_emerald'), class: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+        { name: t('color_green'), class: "text-green-400 bg-green-400/10 border-green-400/20" },
+        { name: t('color_yellow'), class: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" },
+        { name: t('color_orange'), class: "text-orange-400 bg-orange-400/10 border-orange-400/20" },
+        { name: t('color_red'), class: "text-red-400 bg-red-400/10 border-red-400/20" },
+        { name: t('color_pink'), class: "text-pink-400 bg-pink-400/10 border-pink-400/20" },
+        { name: t('color_purple'), class: "text-purple-400 bg-purple-400/10 border-purple-400/20" },
     ];
 
     const [selectedIcon, setSelectedIcon] = React.useState("Zap");
     const [selectedColor, setSelectedColor] = React.useState(availableColors[4].class);
     const [variance, setVariance] = React.useState(5);
 
-    // Appliance Presets (Generic)
-    // Appliance Presets (Generic)
+    // Appliance Presets
     const presets = [
-        { name: "Chuveiro Elétrico", watts: 5500, icon: Droplets, iconName: "Droplets", color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
-        { name: "Ar Condicionado", watts: 1800, icon: Wind, iconName: "Wind", color: "text-cyan-400 bg-cyan-400/10 border-cyan-400/20" },
-        { name: "Carro Elétrico", watts: 7400, icon: Car, iconName: "Car", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
-        { name: "Secador de Cabelo", watts: 2000, icon: Wind, iconName: "Wind", color: "text-pink-400 bg-pink-400/10 border-pink-400/20" },
-        { name: "Microondas", watts: 1200, icon: Zap, iconName: "Zap", color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" },
-        { name: "Gaming PC", watts: 600, icon: Laptop, iconName: "Laptop", color: "text-purple-400 bg-purple-400/10 border-purple-400/20" },
+        { name: t('electric_shower'), watts: 5500, icon: Droplets, iconName: "Droplets", color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+        { name: t('air_conditioner'), watts: 1800, icon: Wind, iconName: "Wind", color: "text-cyan-400 bg-cyan-400/10 border-cyan-400/20" },
+        { name: t('electric_car'), watts: 7400, icon: Car, iconName: "Car", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+        { name: t('hair_dryer'), watts: 2000, icon: Wind, iconName: "Wind", color: "text-pink-400 bg-pink-400/10 border-pink-400/20" },
+        { name: t('microwave'), watts: 1200, icon: Zap, iconName: "Zap", color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" },
+        { name: t('gaming_pc'), watts: 600, icon: Laptop, iconName: "Laptop", color: "text-purple-400 bg-purple-400/10 border-purple-400/20" },
     ];
 
     const handleInject = (appliance) => {
@@ -84,16 +104,31 @@ const SimulatorPage = () => {
         return <IconComponent size={24} />;
     };
 
+    // State for Confirm Modal
+    const [deletingSavedId, setDeletingSavedId] = React.useState(null);
+
     return (
-        <div className="space-y-8 p-4 md:p-6 pb-20 max-w-7xl mx-auto animate-in fade-in duration-500">
+        <PageTransition className="space-y-8 pb-20">
+            <ConfirmModal
+                isOpen={!!deletingSavedId}
+                onClose={() => setDeletingSavedId(null)}
+                onConfirm={() => {
+                    if (deletingSavedId) removeSavedDevice(deletingSavedId);
+                }}
+                title={t('remove_saved_device')}
+                description={t('remove_saved_device_desc')}
+                confirmText={t('remove')}
+                isDestructive
+            />
+
             {/* Header */}
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
                     <Zap className="text-yellow-500" />
-                    Simulador de Carga
+                    {t('load_simulator')}
                 </h1>
                 <p className="text-muted-foreground mt-2">
-                    Simule o consumo de dispositivos reais ou fictícios para testar o sistema.
+                    {t('simulator_desc')}
                 </p>
             </div>
 
@@ -112,9 +147,9 @@ const SimulatorPage = () => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg md:text-xl flex items-center gap-2">
-                                    Simulação Ativa
+                                    {t('simulation_active_banner')}
                                     <span className="text-sm font-normal opacity-70 bg-black/20 px-2 py-0.5 rounded-full">
-                                        {activeSimulations?.length || 0} dispositivos
+                                        {activeSimulations?.length || 0} {t('devices_count')}
                                     </span>
                                 </h3>
                                 <p className="text-3xl font-bold tracking-tighter mt-1">
@@ -127,7 +162,7 @@ const SimulatorPage = () => {
                                 onClick={(e) => { e.stopPropagation(); stopSimulation(); }}
                                 className="hidden md:block px-4 py-2 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium border border-red-500/30 text-sm transition-colors"
                             >
-                                Parar Tudo
+                                {t('stop_all')}
                             </button>
                             <button className="p-2 rounded-full hover:bg-black/20 transition-colors">
                                 {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -145,7 +180,7 @@ const SimulatorPage = () => {
                                 transition={{ duration: 0.3, ease: "easeInOut" }}
                             >
                                 <div className="p-4 md:p-6 pt-0 border-t border-yellow-500/10 space-y-3">
-                                    <h4 className="text-sm uppercase tracking-wider opacity-60 font-semibold mb-2">Dispositivos em uso</h4>
+                                    <h4 className="text-sm uppercase tracking-wider opacity-60 font-semibold mb-2">{t('devices_in_use')}</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {activeSimulations?.map((sim) => (
                                             <motion.div
@@ -179,7 +214,7 @@ const SimulatorPage = () => {
                                         onClick={stopSimulation}
                                         className="md:hidden w-full mt-4 py-3 rounded bg-red-500/20 text-red-400 font-bold border border-red-500/30"
                                     >
-                                        Parar Simulação Completa
+                                        {t('stop_full_simulation')}
                                     </button>
                                 </div>
                             </motion.div>
@@ -191,7 +226,7 @@ const SimulatorPage = () => {
             {/* Customized Simulation (Manual) */}
             <div className="p-6 rounded-xl border border-border bg-card/50 backdrop-blur-sm">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Laptop size={18} /> Simulação Manual
+                    <Laptop size={18} /> {t('manual_simulation')}
                 </h3>
                 <form
                     onSubmit={(e) => {
@@ -203,7 +238,7 @@ const SimulatorPage = () => {
                     className="flex flex-col sm:flex-row gap-4 items-end"
                 >
                     <div className="flex-1 space-y-2">
-                        <label className="text-sm text-muted-foreground">Potência (Watts)</label>
+                        <label className="text-sm text-muted-foreground">{t('power_watts')}</label>
                         <div className="relative">
                             <input
                                 name="watts"
@@ -216,7 +251,7 @@ const SimulatorPage = () => {
                         </div>
                     </div>
                     <div className="w-full sm:w-32 space-y-2">
-                        <label className="text-sm text-muted-foreground">Flutuação (%)</label>
+                        <label className="text-sm text-muted-foreground">{t('fluctuation')}</label>
                         <div className="relative">
                             <input
                                 name="variance"
@@ -231,7 +266,7 @@ const SimulatorPage = () => {
                         </div>
                     </div>
                     <button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 rounded-lg font-medium transition-colors">
-                        Simular
+                        {t('simulate')}
                     </button>
                 </form>
             </div>
@@ -241,13 +276,13 @@ const SimulatorPage = () => {
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Tv size={20} className="text-purple-400" />
-                        Meus Dispositivos
+                        {t('my_devices')}
                     </h2>
                     <button
                         onClick={() => setIsAdding(!isAdding)}
                         className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition-colors"
                     >
-                        {isAdding ? "Cancelar" : "+ Novo Dispositivo"}
+                        {isAdding ? t('cancel') : `+ ${t('new_device')}`}
                     </button>
                 </div>
 
@@ -261,15 +296,15 @@ const SimulatorPage = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold opacity-70 uppercase tracking-wider">Informações Básicas</label>
-                                    <input name="name" required placeholder="Nome (Ex: Geladeira)" className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-sm placeholder:text-white/30 focus:border-white/40 outline-none transition-colors" />
+                                    <label className="text-xs font-semibold opacity-70 uppercase tracking-wider">{t('basic_info')}</label>
+                                    <input name="name" required placeholder={t('device_name_placeholder')} className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-sm placeholder:text-white/30 focus:border-white/40 outline-none transition-colors" />
                                     <div className="relative">
-                                        <input name="watts" type="number" required placeholder="Potência (Watts)" className="w-full bg-black/20 border border-white/10 rounded-lg p-3 pl-9 text-sm placeholder:text-white/30 focus:border-white/40 outline-none transition-colors" />
+                                        <input name="watts" type="number" required placeholder={t('power_watts')} className="w-full bg-black/20 border border-white/10 rounded-lg p-3 pl-9 text-sm placeholder:text-white/30 focus:border-white/40 outline-none transition-colors" />
                                         <Zap size={14} className="absolute left-3 top-3.5 opacity-50" />
                                     </div>
                                     <div className="space-y-2 pt-2">
                                         <div className="flex justify-between items-center text-xs">
-                                            <span className="opacity-70">Flutuação (Simulação)</span>
+                                            <span className="opacity-70">{t('fluctuation_sim')}</span>
                                             <span className="font-mono bg-black/20 px-2 py-0.5 rounded">± {variance}%</span>
                                         </div>
                                         <input
@@ -287,8 +322,8 @@ const SimulatorPage = () => {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs font-semibold opacity-70 uppercase tracking-wider mb-3 block">Ícone</label>
-                                    <div className="grid grid-cols-6 gap-2">
+                                    <label className="text-xs font-semibold opacity-70 uppercase tracking-wider mb-3 block">{t('icon')}</label>
+                                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                                         {availableIcons.map(iconObj => {
                                             const Icon = iconObj.icon;
                                             return (
@@ -307,7 +342,7 @@ const SimulatorPage = () => {
                                 </div>
 
                                 <div>
-                                    <label className="text-xs font-semibold opacity-70 uppercase tracking-wider mb-3 block">Cor do Card</label>
+                                    <label className="text-xs font-semibold opacity-70 uppercase tracking-wider mb-3 block">{t('card_color')}</label>
                                     <div className="flex flex-wrap gap-3">
                                         {availableColors.map((col, idx) => (
                                             <button
@@ -324,9 +359,9 @@ const SimulatorPage = () => {
                         </div>
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
-                            <button type="button" onClick={() => setIsAdding(false)} className="px-4 py-2 text-sm hover:bg-white/10 rounded-lg transition-colors opacity-70 hover:opacity-100">Cancelar</button>
+                            <button type="button" onClick={() => setIsAdding(false)} className="px-4 py-2 text-sm hover:bg-white/10 rounded-lg transition-colors opacity-70 hover:opacity-100">{t('cancel')}</button>
                             <button type="submit" className="bg-white text-black hover:bg-white/90 px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105">
-                                Salvar Dispositivo
+                                {t('save_device')}
                             </button>
                         </div>
                     </motion.form>
@@ -334,7 +369,7 @@ const SimulatorPage = () => {
 
                 {savedDevices.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-xl bg-card/30">
-                        Nenhum dispositivo salvo. Adicione o primeiro acima!
+                        {t('no_saved_devices')}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -355,13 +390,13 @@ const SimulatorPage = () => {
                                         onClick={() => handleInject(dev)}
                                         className="text-xs bg-black/20 hover:bg-black/40 text-white border border-white/10 px-3 py-1.5 rounded transition-colors"
                                     >
-                                        Simular
+                                        {t('simulate')}
                                     </button>
                                     <button
-                                        onClick={() => removeSavedDevice(dev.id)}
+                                        onClick={() => setDeletingSavedId(dev.id)}
                                         className="text-xs text-red-400 hover:text-red-300 px-3 py-1 rounded transition-colors hover:bg-red-500/10"
                                     >
-                                        Excluir
+                                        {t('delete')}
                                     </button>
                                 </div>
                             </motion.div>
@@ -375,7 +410,7 @@ const SimulatorPage = () => {
             {/* Presets (Generic) */}
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                 <Droplets size={20} className="text-blue-400" />
-                Exemplos Prontos
+                {t('ready_examples')}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {presets.map((app) => {
@@ -399,7 +434,7 @@ const SimulatorPage = () => {
                     )
                 })}
             </div>
-        </div>
+        </PageTransition>
     );
 };
 

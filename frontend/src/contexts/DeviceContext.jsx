@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { getDevices } from '../services/apiService';
 import { useAuth } from './AuthContext';
+import { useAchievements } from './AchievementsContext';
 import { db } from '../lib/firebase';
 import { collection, getDocs, setDoc, doc, addDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
@@ -10,13 +11,12 @@ export const useDevice = () => useContext(DeviceContext);
 
 export const DeviceProvider = ({ children }) => {
     const { currentUser } = useAuth();
+    const { updateStat, incrementStat } = useAchievements(); // Connected!
     const [devices, setDevices] = useState([]);
     const [currentDeviceId, setCurrentDeviceId] = useState(null);
     const [isGenerator, setIsGenerator] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // Simulation State
-    // Simulation State - Persisted in Session Storage
     // Simulation State - Persisted in Session Storage
     const [simulationMode, setSimulationMode] = useState(() => {
         return sessionStorage.getItem('sim_mode') === 'true';
@@ -52,11 +52,17 @@ export const DeviceProvider = ({ children }) => {
         return total;
     };
 
-    // Helper: Apply random fluctuation (noise) to look realistic
-    // variance: percentage of fluctuation (e.g., 0.05 for 5%)
+    // Helper: Apply random fluctuation (noise) for realism
 
 
     // Start infinite simulation
+    // Update Max Simultaneous Stat
+    useEffect(() => {
+        if (activeSimulations.length >= 3) {
+            updateStat('maxSimultaneous', activeSimulations.length);
+        }
+    }, [activeSimulations.length, updateStat]);
+
     // Start/Add Simulation
     const startSimulation = (watts, meta = {}) => {
         const newSim = {
@@ -73,6 +79,9 @@ export const DeviceProvider = ({ children }) => {
             sessionStorage.setItem('sim_active_devices', JSON.stringify(updated));
             return updated;
         });
+
+        // Increment total runs
+        incrementStat('simulationsRun');
 
         setSimulationMode(true);
         sessionStorage.setItem('sim_mode', 'true');
@@ -102,7 +111,6 @@ export const DeviceProvider = ({ children }) => {
         sessionStorage.removeItem('sim_energy');
     };
 
-    // Virtual Metering Loop
     // Virtual Metering Loop (Integrates Total Power)
     useEffect(() => {
         let interval;
@@ -119,10 +127,21 @@ export const DeviceProvider = ({ children }) => {
                     sessionStorage.setItem('sim_energy', newValue);
                     return newValue;
                 });
+
+                // Update Achievements Stat (Generation) - Throttled? 
+                // For now, let's do it every tick but small amounts might be lost if logic floats?
+                // incrementStat handles addition.
+                incrementStat('totalGeneration', energyPerSecond);
+
+                // Estimate Cost Savings (assuming free solar vs grid cost)
+                // We need tariff for this.
+                // For now just 1:1 ratio placeholder or fetch tariff
+                incrementStat('totalSavings', energyPerSecond * 0.92); // Approx cost
+
             }, 1000);
         }
         return () => clearInterval(interval);
-    }, [simulationMode, activeSimulations]);
+    }, [simulationMode, activeSimulations, incrementStat]);
 
     // Kept for compatibility if needed, but redirected to startSimulation
     const injectSimulationEvent = (watts, meta) => {
@@ -162,11 +181,6 @@ export const DeviceProvider = ({ children }) => {
         if (currentUser) {
             // Cloud
             try {
-                // Optimistic Local Update (Instant Feedback)
-                // We add it to state immediately. Real-time sync might override/confirm it later.
-                // Actually, let's wait for cloud to confirm to avoiding "jumping".
-                // But since it's failing, we need a fallback.
-
                 await addDoc(collection(db, 'users', currentUser.uid, 'virtual_devices'), device);
             } catch (e) {
                 console.error("Error saving virtual device to cloud:", e);
@@ -230,10 +244,6 @@ export const DeviceProvider = ({ children }) => {
                         cloudDevices.push({ id: doc.id, ...doc.data() });
                     });
 
-                    // Logic: Cloud is the source of truth.
-                    // If cloud has data, it overwrites local cache.
-                    // If cloud is empty (new user), we might want to keep local if we just added it?
-                    // But usually cloud should match.
                     if (cloudDevices.length > 0) {
                         allDevices = cloudDevices;
                         // Update cache
@@ -251,8 +261,6 @@ export const DeviceProvider = ({ children }) => {
                 }
             }
 
-            // Always fetch API defaults if list is empty? Or just for guests?
-            // Original logic fetched API defaults. Let's keep it but careful not to duplicate.
             if (allDevices.length === 0) {
                 try {
                     const list = await getDevices();
@@ -268,15 +276,11 @@ export const DeviceProvider = ({ children }) => {
 
 
             setDevices(allDevices);
-
-            // Set current device logic
             if (allDevices.length > 0) {
-                // Check if current device is in list, if not reset
                 if (!currentDeviceId || !allDevices.find(d => d.id === currentDeviceId)) {
                     setCurrentDeviceId(allDevices[0].id);
                 }
             } else {
-                // No devices at all
                 setCurrentDeviceId(null);
             }
 
@@ -284,7 +288,7 @@ export const DeviceProvider = ({ children }) => {
         };
 
         loadDevices();
-    }, [currentUser]); // Reload when user logs in/out
+    }, [currentUser]);
 
 
     const addDevice = async (name, type) => {
@@ -321,14 +325,39 @@ export const DeviceProvider = ({ children }) => {
         return finalId;
     };
 
-    // Update derived state when current device changes
+    const removeDevice = async (id) => {
+        // 1. Update State
+        const updatedDevices = devices.filter(d => d.id !== id);
+        setDevices(updatedDevices);
+
+        // Reset current if deleted
+        if (currentDeviceId === id) {
+            setCurrentDeviceId(updatedDevices.length > 0 ? updatedDevices[0].id : null);
+        }
+
+        // 2. Persistence
+        if (currentUser) {
+            // Cloud
+            try {
+                await deleteDoc(doc(db, 'users', currentUser.uid, 'devices', id));
+            } catch (e) {
+                console.error("Error deleting device from cloud:", e);
+            }
+            // Local Cache
+            localStorage.setItem(`devices_${currentUser.uid}`, JSON.stringify(updatedDevices));
+        } else {
+            // Unauthed Local Storage
+            localStorage.setItem('local_devices', JSON.stringify(updatedDevices));
+        }
+    };
+
     useEffect(() => {
         if (!currentDeviceId) return;
         const isGen = /solar|pv|gerador|generator|inverter/i.test(currentDeviceId);
         setIsGenerator(isGen);
     }, [currentDeviceId]);
 
-    const value = {
+    const value = React.useMemo(() => ({
         devices,
         currentDeviceId,
         setCurrentDeviceId,
@@ -342,12 +371,23 @@ export const DeviceProvider = ({ children }) => {
         getSimulatedReading,
         loading,
         addDevice,
+        removeDevice,
         savedDevices,
         addSavedDevice,
         removeSavedDevice,
         simulatedEnergy,
         removeSimulation
-    };
+    }), [
+        devices,
+        currentDeviceId,
+        isGenerator,
+        simulationMode,
+        activeSimulations,
+        totalSimulatedWatts,
+        loading,
+        savedDevices,
+        simulatedEnergy
+    ]);
 
     return (
         <DeviceContext.Provider value={value}>

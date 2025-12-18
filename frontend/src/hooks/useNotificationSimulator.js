@@ -2,13 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useNotifications } from '../contexts/NotificationContext';
 
 const SIMULATION_EVENTS = [
-    { title: "Pico de Consumo", message: "Detectado pico de 4.2kW no Ar Condicionado.", type: "alert", actionLink: "/history" },
-    { title: "Tarifa Atualizada", message: "A tarifa mudou para Intermediária (R$ 0,89/kWh).", type: "info", actionLink: "/settings" },
-    { title: "Dispositivo Conectado", message: "Novo dispositivo 'Smart TV' detectado na rede.", type: "success", actionLink: "/devices" },
-    { title: "Meta Atingida", message: "Você atingiu 80% do orçamento mensal estipulado.", type: "alert", actionLink: "/reports" },
-    { title: "Economia Gerada", message: "Seus painéis economizaram R$ 12,50 hoje.", type: "energy", actionLink: "/history" },
-    { title: "Tensão Instável", message: "Variação de tensão detectada (118V -> 109V).", type: "alert", actionLink: "/settings" },
-    { title: "Relatório Disponível", message: "O relatório semanal de eficiência está pronto.", type: "info", actionLink: "/reports" }
+    { titleKey: "notif_peak_load", messageKey: "notif_peak_load_desc", type: "alert", actionLink: "/history" },
+    { titleKey: "notif_tariff_update", messageKey: "notif_tariff_update_desc", type: "info", actionLink: "/settings" },
+    { titleKey: "notif_device_connected", messageKey: "notif_device_connected_desc", type: "success", actionLink: "/devices" },
+    { titleKey: "notif_goal_reached", messageKey: "notif_goal_reached_desc", type: "alert", actionLink: "/reports" },
+    { titleKey: "notif_savings_generated", messageKey: "notif_savings_generated_desc", type: "energy", actionLink: "/history" },
+    { titleKey: "notif_voltage_unstable", messageKey: "notif_voltage_unstable_desc", type: "alert", actionLink: "/settings" },
+    { titleKey: "notif_report_ready", messageKey: "notif_report_ready_desc", type: "info", actionLink: "/reports" }
 ];
 
 export const useNotificationSimulator = () => {
@@ -26,8 +26,8 @@ export const useNotificationSimulator = () => {
         // If empty, add a welcome notification immediately
         if (notifications.length === 0) {
             addNotification({
-                title: "Sistema Iniciado",
-                message: "Monitoramento em tempo real ativo. Bem-vindo ao WireSense.",
+                titleKey: "notif_system_started",
+                messageKey: "notif_system_started_desc",
                 type: "success"
             });
         }

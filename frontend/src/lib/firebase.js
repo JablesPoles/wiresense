@@ -3,7 +3,6 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// TODO: Replace with your project's config keys from console.firebase.google.com
 const firebaseConfig = {
     apiKey: "AIzaSyC_6iRyOA_zjdducDNL9PZIz4oO27so17s",
     authDomain: "wiresense-app.firebaseapp.com",

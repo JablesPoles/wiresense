@@ -26,6 +26,7 @@ export const SettingsProvider = ({ children }) => {
     weeklyReport: false,
     educationalTips: true
   });
+  const [tipoFase, setTipoFase] = useState('Monofásico');
 
   // State for live currency rates
   const [exchangeRates, setExchangeRates] = useState({ USD: 1, EUR: 1, BRL: 1 });
@@ -71,6 +72,7 @@ export const SettingsProvider = ({ children }) => {
       const localBudget = Number(localStorage.getItem('user_budget_limit')) || 0;
       const localTariffMode = localStorage.getItem('user_tariffMode') || 'conventional';
       const localPeakStart = Number(localStorage.getItem('user_peakStartHour')) || 18;
+      const localTipoFase = localStorage.getItem('user_tipoFase') || 'Monofásico';
       let localNotifications = { highPriority: true, weeklyReport: false, educationalTips: true };
       try {
         const savedNotifs = localStorage.getItem('user_notifications');
@@ -91,6 +93,7 @@ export const SettingsProvider = ({ children }) => {
             setBudgetLimit(data.budgetLimit || localBudget);
             setTariffMode(data.tariffMode || localTariffMode);
             setPeakStartHour(data.peakStartHour || localPeakStart);
+            setTipoFase(data.tipoFase || localTipoFase);
             setNotifications(data.notifications || localNotifications);
           } else {
             // First time login? Sync local to cloud
@@ -101,6 +104,7 @@ export const SettingsProvider = ({ children }) => {
               budgetLimit: localBudget,
               tariffMode: localTariffMode,
               peakStartHour: localPeakStart,
+              tipoFase: localTipoFase,
               notifications: localNotifications
             });
             setVoltage(localVoltage);
@@ -109,6 +113,7 @@ export const SettingsProvider = ({ children }) => {
             setBudgetLimit(localBudget);
             setTariffMode(localTariffMode);
             setPeakStartHour(localPeakStart);
+            setTipoFase(localTipoFase);
             setNotifications(localNotifications);
           }
         } catch (error) {
@@ -128,6 +133,7 @@ export const SettingsProvider = ({ children }) => {
         setBudgetLimit(localBudget);
         setTariffMode(localTariffMode);
         setPeakStartHour(localPeakStart);
+        setTipoFase(localTipoFase);
         setNotifications(localNotifications);
       }
       setIsLoading(false);
@@ -193,6 +199,10 @@ export const SettingsProvider = ({ children }) => {
       setPeakStartHour(value);
       saveSetting('peakStartHour', value);
     }
+    if (key === 'tipoFase') {
+      setTipoFase(value);
+      saveSetting('tipoFase', value);
+    }
   };
 
   const updateNotificationSetting = (key, value) => {
@@ -210,12 +220,6 @@ export const SettingsProvider = ({ children }) => {
   // --- Device Specific Settings (Cloud + Local) ---
 
   const getDeviceKey = (deviceId, key) => `device_${deviceId}_${key}`;
-
-  // Read: Logic is tricky with Cloud. We'll simplify:
-  // For now, we still rely on localStorage for instant synchronous reads in UI (critical for perf)
-  // But we should sync these to cloud too in the background or load them all at start.
-  // To keep existing logic simple and robust: we continue to read from LocalStorage for immediate render.
-  // Future: Refactor to load ALL device settings into a state object context on load.
   const getDeviceSetting = (deviceId, key, globalValue) => {
     if (!deviceId) return globalValue;
     const saved = localStorage.getItem(getDeviceKey(deviceId, key));
@@ -242,7 +246,7 @@ export const SettingsProvider = ({ children }) => {
   };
 
 
-  const value = {
+  const value = React.useMemo(() => ({
     isLoading,
     isSettingsOpen,
     setIsSettingsOpen,
@@ -256,6 +260,7 @@ export const SettingsProvider = ({ children }) => {
     updateBudgetLimit,
     tariffMode,
     peakStartHour,
+    tipoFase,
     updateSetting,
     getDeviceSetting,
     updateDeviceSetting,
@@ -263,7 +268,20 @@ export const SettingsProvider = ({ children }) => {
     exchangeRates,
     notifications,
     updateNotificationSetting
-  };
+  }), [
+    isLoading,
+    isSettingsOpen,
+    voltage,
+    tarifaKwh,
+    moeda,
+    budgetLimit,
+    tariffMode,
+    peakStartHour,
+    tipoFase,
+    settingsVersion,
+    exchangeRates,
+    notifications
+  ]);
 
   return (
     <SettingsContext.Provider value={value}>

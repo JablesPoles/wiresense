@@ -22,6 +22,84 @@ const MainLayout = ({ children }) => {
   const themeMode = isSolar ? 'generator' : 'consumer';
   const activeGradient = theme?.modes?.[themeMode]?.gradient;
 
+  // Helper to convert Hex to HSL for Tailwind variables
+  const hexToHsl = (hex) => {
+    if (!hex) return '0 0% 0%'; // Fallback
+    try {
+      let c = hex.substring(1).split('');
+      if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+      c = '0x' + c.join('');
+      let r = (c >> 16) & 255;
+      let g = (c >> 8) & 255;
+      let b = c & 255;
+      r /= 255; g /= 255; b /= 255;
+      let max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      if (max === min) {
+        h = s = 0;
+      } else {
+        let d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return `${(h * 360).toFixed(0)} ${(s * 100).toFixed(0)}% ${(l * 100).toFixed(0)}%`;
+    } catch (e) {
+      console.warn("HexToHsl failed", e);
+      return '0 0% 0%';
+    }
+  };
+
+  // Helper to determine contrast color (Black or White) based on brightness
+  const getContrastColor = (hex) => {
+    if (!hex) return '0 0% 100%';
+    try {
+      let c = hex.substring(1).split('');
+      if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+      c = '0x' + c.join('');
+      let r = (c >> 16) & 255;
+      let g = (c >> 8) & 255;
+      let b = c & 255;
+      const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+      return yiq >= 150 ? '0 0% 0%' : '0 0% 100%';
+    } catch (e) {
+      return '0 0% 100%';
+    }
+  };
+
+  // Inject Dynamic Mode Colors
+  React.useEffect(() => {
+    if (theme?.modes?.[themeMode]) {
+      const colors = theme.modes[themeMode];
+      const root = document.documentElement;
+
+      const primaryHsl = hexToHsl(colors.primary);
+      const secondaryHsl = hexToHsl(colors.secondary);
+      const primaryForegroundHsl = getContrastColor(colors.primary);
+
+      // Convert and set
+      root.style.setProperty('--primary', primaryHsl);
+      root.style.setProperty('--secondary', secondaryHsl);
+      root.style.setProperty('--primary-foreground', primaryForegroundHsl);
+
+      // Optional: Set ring to match primary
+      root.style.setProperty('--ring', primaryHsl);
+    }
+  }, [theme, themeMode]);
+
+  // Bypass Layout for Login Page
+  if (location.pathname === '/login') {
+    return (
+      <div className="bg-background text-foreground font-sans antialiased">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-background text-foreground font-sans antialiased transition-colors duration-500">
       {/* Sidebar */}

@@ -1,11 +1,12 @@
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Check, Trash2, Info, AlertTriangle, Zap, CheckCircle2, ArrowRight } from 'lucide-react';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { cn } from '../../lib/utils';
-// Removed duplicate import
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const NotificationDropdown = () => {
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const {
         notifications,
@@ -14,6 +15,32 @@ export const NotificationDropdown = () => {
         markAllAsRead,
         clearAll
     } = useNotifications();
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    // Close on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const resolveMessage = (key, data) => {
+        if (!key) return null;
+        let text = t(key);
+        if (text === key) return text; // Standard fallback
+
+        if (data) {
+            Object.keys(data).forEach(param => {
+                text = text.replace(`{${param}}`, data[param]);
+            });
+        }
+        return text;
+    };
 
     const getIcon = (type) => {
         switch (type) {
@@ -25,32 +52,29 @@ export const NotificationDropdown = () => {
     };
 
     return (
-        <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-                <button className="relative p-2 text-muted-foreground hover:text-white hover:bg-white/5 rounded-full transition-all duration-300 outline-none group">
-                    <Bell size={20} className={cn(
-                        "transition-transform duration-300 group-hover:scale-110",
-                        unreadCount > 0 && "animate-pulse-subtle" // Custom subtle pulse
-                    )} />
-                    {unreadCount > 0 && (
-                        <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#09090b] animate-bounce-short" />
-                    )}
-                </button>
-            </DropdownMenu.Trigger>
+        <div className="relative" ref={dropdownRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="relative p-2 text-muted-foreground hover:text-white hover:bg-white/5 rounded-full transition-all duration-300 outline-none group"
+            >
+                <Bell size={20} className={cn(
+                    "transition-transform duration-300 group-hover:scale-110",
+                    unreadCount > 0 && "animate-pulse-subtle" // Custom subtle pulse
+                )} />
+                {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#09090b] animate-bounce-short" />
+                )}
+            </button>
 
-            <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                    align="end"
-                    sideOffset={10}
-                    className="w-80 md:w-96 bg-[#1a1b26]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
-                >
+            {isOpen && (
+                <div className="fixed top-20 left-4 right-4 w-auto sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-96 sm:mt-2 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden ring-1 ring-primary/10 max-h-[80vh] sm:max-h-[calc(100vh-200px)]">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-white/5">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary/5">
                         <span className="text-sm font-semibold text-white flex items-center gap-2">
-                            Notificações
+                            {t('notifications') || 'Notificações'}
                             {unreadCount > 0 && (
                                 <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded-full border border-red-500/20">
-                                    {unreadCount} novas
+                                    {unreadCount} {t('new') || 'novas'}
                                 </span>
                             )}
                         </span>
@@ -60,14 +84,14 @@ export const NotificationDropdown = () => {
                                     <button
                                         onClick={markAllAsRead}
                                         className="p-1.5 text-xs text-muted-foreground hover:text-white hover:bg-white/10 rounded-md transition-colors"
-                                        title="Marcar todas como lidas"
+                                        title={t('mark_all_read') || "Marcar todas como lidas"}
                                     >
                                         <Check size={14} />
                                     </button>
                                     <button
                                         onClick={clearAll}
                                         className="p-1.5 text-xs text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
-                                        title="Limpar tudo"
+                                        title={t('clear_all') || "Limpar tudo"}
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -81,23 +105,23 @@ export const NotificationDropdown = () => {
                         {notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/50 gap-3">
                                 <Bell size={32} className="opacity-20" />
-                                <span className="text-sm">Nada por aqui...</span>
+                                <span className="text-sm">{t('no_notifications') || "Nada por aqui..."}</span>
                             </div>
                         ) : (
-                            <div className="py-1">
+                            <div className="flex flex-col">
                                 {notifications.map((notif) => (
-                                    <DropdownMenu.Item
+                                    <div
                                         key={notif.id}
-                                        onSelect={(e) => e.preventDefault()}
                                         onClick={() => {
                                             markAsRead(notif.id);
                                             if (notif.actionLink) {
-                                                navigate(notif.actionLink);
+                                                navigate(notif.actionLink, { state: notif.actionState });
+                                                setIsOpen(false);
                                             }
                                         }}
                                         className={cn(
-                                            "flex gap-3 px-4 py-3 cursor-pointer outline-none transition-colors border-b border-white/5 last:border-0 group/item",
-                                            notif.read ? "bg-transparent opacity-60 hover:opacity-100" : "bg-gradient-to-r from-blue-500/5 to-transparent hover:bg-white/5"
+                                            "flex gap-3 px-4 py-3 cursor-pointer outline-none transition-colors border-b border-border/40 last:border-0 group/item relative overflow-hidden",
+                                            notif.read ? "bg-transparent opacity-60 hover:opacity-100 hover:bg-muted/50" : "bg-primary/5 hover:bg-primary/10"
                                         )}
                                     >
                                         <div className="mt-1 shrink-0">
@@ -107,17 +131,17 @@ export const NotificationDropdown = () => {
                                             <div className="flex justify-between items-start gap-2">
                                                 <p className={cn(
                                                     "text-sm leading-tight flex items-center gap-2",
-                                                    notif.read ? "text-muted-foreground font-normal" : "text-white font-medium"
+                                                    notif.read ? "text-muted-foreground font-normal" : "text-foreground font-medium"
                                                 )}>
-                                                    {notif.title}
-                                                    {notif.actionLink && <ArrowRight size={10} className="opacity-0 group-hover/item:opacity-100 transition-opacity text-blue-400" />}
+                                                    {resolveMessage(notif.titleKey, notif.titleData) || notif.title}
+                                                    {notif.actionLink && <ArrowRight size={10} className="opacity-0 group-hover/item:opacity-100 transition-opacity text-primary" />}
                                                 </p>
                                                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                                                     {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             </div>
                                             <p className="text-xs text-muted-foreground line-clamp-2">
-                                                {notif.message}
+                                                {resolveMessage(notif.messageKey, notif.messageData) || notif.message}
                                             </p>
                                         </div>
                                         {!notif.read && (
@@ -125,13 +149,14 @@ export const NotificationDropdown = () => {
                                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                                             </div>
                                         )}
-                                    </DropdownMenu.Item>
+                                    </div>
                                 ))}
                             </div>
                         )}
                     </div>
-                </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+                </div>
+            )
+            }
+        </div >
     );
 };

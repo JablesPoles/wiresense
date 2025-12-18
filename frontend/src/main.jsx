@@ -2,14 +2,26 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
-import { ThemeProvider } from './components/theme-provider'
+import ErrorBoundary from './components/common/ErrorBoundary.jsx'
 
+import { registerSW } from 'virtual:pwa-register'
+
+// Register Service Worker
+const updateSW = registerSW({
+  onNeedRefresh() {
+    if (confirm('Nova atualização disponível. Deseja recarregar?')) {
+      updateSW(true)
+    }
+  },
+  onOfflineReady() {
+    console.log('App pronto para uso offline')
+  },
+})
 // Render principal da aplicação
-console.log("Mounting App...");
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+    <ErrorBoundary>
       <App />
-    </ThemeProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

@@ -1,10 +1,17 @@
 import React from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAchievements } from '../../contexts/AchievementsContext';
 import { motion } from 'framer-motion';
 import { Check, Palette } from 'lucide-react';
 
 export const ThemeSelector = () => {
     const { currentThemeId, setTheme, availableThemes } = useTheme();
+    const { incrementStat } = useAchievements();
+
+    const handleThemeChange = (id) => {
+        setTheme(id);
+        incrementStat('themesChanged');
+    };
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -18,12 +25,12 @@ export const ThemeSelector = () => {
                 return (
                     <motion.button
                         key={theme.id}
-                        onClick={() => setTheme(theme.id)}
+                        onClick={() => handleThemeChange(theme.id)}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         className={`relative rounded-xl border-2 overflow-hidden text-left transition-all ${isActive
-                                ? 'border-primary ring-2 ring-primary/20 scale-[1.02]'
-                                : 'border-border hover:border-primary/50 opacity-80 hover:opacity-100'
+                            ? 'border-primary ring-2 ring-primary/20 scale-[1.02]'
+                            : 'border-border hover:border-primary/50 opacity-80 hover:opacity-100'
                             }`}
                     >
                         {/* Preview Window */}

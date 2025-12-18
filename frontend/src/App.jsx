@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
@@ -5,12 +6,15 @@ import { TutorialProvider, useTutorial } from './contexts/TutorialContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { DeviceProvider } from './contexts/DeviceContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AchievementsProvider } from './contexts/AchievementsContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import MainLayout from './components/layout/MainLayout';
 import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import DevicesPage from './pages/DevicesPage';
+import AchievementsPage from './pages/AchievementsPage';
 import Tutorial from './pages/TutorialPage';
 
 import LoadingScreen from './components/common/LoadingScreen';
@@ -67,6 +71,11 @@ const AnimatedRoutes = () => {
             <SimulatorPage />
           </ProtectedRoute>
         } />
+        <Route path="/achievements" element={
+          <ProtectedRoute>
+            <AchievementsPage />
+          </ProtectedRoute>
+        } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
@@ -104,16 +113,20 @@ function App() {
     <AuthProvider>
       <ThemeProvider>
         <NotificationProvider>
-          <SettingsProvider>
-            <TutorialProvider>
-              <DeviceProvider>
-                <AppContent />
-              </DeviceProvider>
-            </TutorialProvider>
-          </SettingsProvider>
+          <LanguageProvider>
+            <AchievementsProvider>
+              <SettingsProvider>
+                <TutorialProvider>
+                  <DeviceProvider>
+                    <AppContent />
+                  </DeviceProvider>
+                </TutorialProvider>
+              </SettingsProvider>
+            </AchievementsProvider>
+          </LanguageProvider>
         </NotificationProvider>
       </ThemeProvider>
-    </AuthProvider>
+    </AuthProvider >
   );
 }
 

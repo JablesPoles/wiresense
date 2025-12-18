@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import PropTypes from 'prop-types';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const MAX_DATA_POINTS = 30;
 
 export function CurrentRealtimeChart({ data, color }) {
-  const [series, setSeries] = useState([{ name: 'Corrente', data: [] }]);
+  const { t } = useLanguage();
+  const [series, setSeries] = useState([{ name: t('current'), data: [] }]);
 
   // Dynamic color from CSS variable or prop
   const strokeColor = color || '#06b6d4'; // Cyan default
@@ -84,16 +86,16 @@ export function CurrentRealtimeChart({ data, color }) {
     if (data && data.length > 0) {
       const formattedData = data.map((point) => ({
         x: new Date(point.time).getTime(),
-        y: point.current,
+        y: parseFloat(point.current),
       }));
-      setSeries([{ name: 'Corrente', data: formattedData.slice(-MAX_DATA_POINTS) }]);
+      setSeries([{ name: t('current'), data: formattedData.slice(-MAX_DATA_POINTS) }]);
     }
-  }, [data]);
+  }, [data, t]);
 
   return (
     <div className="bg-card border border-border p-6 rounded-xl shadow-sm h-full">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-foreground font-semibold text-lg">Corrente em Tempo Real</h3>
+        <h3 className="text-foreground font-semibold text-lg">{t('realtime_current')}</h3>
         <span className={`text-xs font-mono px-2 py-1 rounded ${color ? 'bg-emerald-500/10 text-emerald-400' : 'bg-cyan-400/10 text-cyan-400'}`}>Live</span>
       </div>
       <ReactApexChart options={options} series={series} type="area" height={250} />

@@ -1,4 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import { db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const ThemeContext = createContext();
 
@@ -35,36 +39,35 @@ export const THEMES = {
             }
         }
     },
-    OCEAN: {
-        id: 'ocean',
-        name: 'Ocean Depth',
+    ROYAL: {
+        id: 'royal',
+        name: 'Royal Luxury',
         type: 'dark',
-        radius: '0.5rem',
+        radius: '0.75rem',
         font: 'sans-serif',
         colors: {
-            background: '222 47% 10%', // Very dark blue
-            card: '215 28% 17%', // Slate blueish
-            text: '210 40% 98%',
+            background: '260 30% 8%', // Deep Indigo Black
+            card: '260 25% 13%',
+            text: '260 10% 98%',
         },
         modes: {
             consumer: {
-                primary: '#3b82f6', // Bright Blue
-                secondary: '#0ea5e9', // Sky Blue
-                // Deep blue gradient
-                gradient: 'radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.3), transparent 70%), radial-gradient(circle at 90% 40%, rgba(14, 165, 233, 0.15), transparent 50%)',
-                iconColor: 'text-blue-500'
+                primary: '#6366f1', // Indigo 500
+                secondary: '#a855f7', // Purple 500
+                gradient: 'radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.25), transparent 70%), radial-gradient(circle at 80% 50%, rgba(168, 85, 247, 0.15), transparent 50%)',
+                iconColor: 'text-indigo-400'
             },
             generator: {
-                primary: '#06b6d4', // Cyan (Solar in ocean context)
-                secondary: '#22d3ee', // Light Cyan
-                gradient: 'radial-gradient(circle at 50% -20%, rgba(6, 182, 212, 0.3), transparent 70%), radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.1), transparent 50%)',
-                iconColor: 'text-cyan-400'
+                primary: '#fbbf24', // Amber 400
+                secondary: '#f59e0b', // Amber 500
+                gradient: 'radial-gradient(circle at 50% -20%, rgba(251, 191, 36, 0.25), transparent 70%)',
+                iconColor: 'text-amber-400'
             },
             simulator: {
-                primary: '#f43f5e', // Rose (Warning)
-                secondary: '#fb7185',
-                overlay: 'radial-gradient(circle at 50% 10%, rgba(244, 63, 94, 0.15) 0%, rgba(0, 0, 0, 0) 50%)',
-                iconColor: 'text-rose-500'
+                primary: '#ef4444', // Red
+                secondary: '#f87171',
+                overlay: 'radial-gradient(circle at 50% 10%, rgba(239, 68, 68, 0.15) 0%, rgba(0, 0, 0, 0) 50%)',
+                iconColor: 'text-red-500'
             }
         }
     },
@@ -227,19 +230,123 @@ export const THEMES = {
                 iconColor: 'text-red-500'
             }
         }
+    },
+    SAKURA: {
+        id: 'sakura',
+        name: 'Sakura Night',
+        type: 'dark',
+        radius: '1rem',
+        font: 'sans-serif',
+        colors: {
+            background: '330 15% 8%', // Deep Pinkish Black
+            card: '330 20% 15%',
+            text: '330 10% 98%',
+        },
+        modes: {
+            consumer: {
+                primary: '#f472b6', // Pink 400
+                secondary: '#fb7185', // Rose 400
+                gradient: 'radial-gradient(circle at 50% -20%, rgba(244, 114, 182, 0.25), transparent 70%), radial-gradient(circle at 80% 60%, rgba(251, 113, 133, 0.15), transparent 50%)',
+                iconColor: 'text-pink-400'
+            },
+            generator: {
+                primary: '#fbbf24', // Amber
+                secondary: '#fcd34d', // Amber 300
+                gradient: 'radial-gradient(circle at 50% -20%, rgba(251, 191, 36, 0.25), transparent 70%)',
+                iconColor: 'text-amber-400'
+            },
+            simulator: {
+                primary: '#ef4444', // Red
+                secondary: '#f87171',
+                overlay: 'radial-gradient(circle at 50% 10%, rgba(239, 68, 68, 0.15) 0%, rgba(0, 0, 0, 0) 50%)',
+                iconColor: 'text-red-500'
+            }
+        }
+    },
+    GLACIER: {
+        id: 'glacier',
+        name: 'Glacier',
+        type: 'dark',
+        radius: '0.5rem',
+        font: 'sans-serif',
+        colors: {
+            background: '200 30% 10%', // Deep Teal Black
+            card: '200 25% 16%',
+            text: '200 20% 96%',
+        },
+        modes: {
+            consumer: {
+                primary: '#22d3ee', // Cyan 400
+                secondary: '#38bdf8', // Sky 400
+                gradient: 'radial-gradient(circle at 50% -20%, rgba(34, 211, 238, 0.25), transparent 70%), radial-gradient(circle at 10% 40%, rgba(56, 189, 248, 0.15), transparent 50%)',
+                iconColor: 'text-cyan-400'
+            },
+            generator: {
+                primary: '#a7f3d0', // Emerald 200 (Ice Green)
+                secondary: '#34d399', // Emerald 400
+                gradient: 'radial-gradient(circle at 50% -20%, rgba(167, 243, 208, 0.2), transparent 70%)',
+                iconColor: 'text-emerald-300'
+            },
+            simulator: {
+                primary: '#f87171', // Red 400
+                secondary: '#ef4444',
+                overlay: 'radial-gradient(circle at 50% 10%, rgba(248, 113, 113, 0.15) 0%, rgba(0, 0, 0, 0) 50%)',
+                iconColor: 'text-red-400'
+            }
+        }
     }
 };
 
 export const ThemeProvider = ({ children }) => {
+    const { currentUser } = useAuth();
+
     const [currentThemeId, setCurrentThemeId] = useState(() => {
         return localStorage.getItem('wiresense_theme') || 'cyberpunk';
     });
 
+    // Cloud Sync: Load Theme
+    useEffect(() => {
+        if (!currentUser) return;
+        const loadTheme = async () => {
+            try {
+                const docRef = doc(db, 'users', currentUser.uid, 'settings', 'theme');
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.themeId && THEMES[data.themeId.toUpperCase()]) {
+                        setCurrentThemeId(data.themeId);
+                        localStorage.setItem('wiresense_theme', data.themeId);
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading theme:", error);
+            }
+        };
+        loadTheme();
+    }, [currentUser]);
+
+    const setTheme = async (themeId) => {
+        // Fix: Lookup by ID value since themeId is lowercase (e.g. 'ocean')
+        // and THEMES keys are uppercase (e.g. 'OCEAN').
+        const theme = Object.values(THEMES).find(t => t.id === themeId);
+        if (theme) {
+            setCurrentThemeId(themeId);
+            localStorage.setItem('wiresense_theme', themeId);
+
+            if (currentUser) {
+                try {
+                    await setDoc(doc(db, 'users', currentUser.uid, 'settings', 'theme'), {
+                        themeId,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                } catch (e) { console.error("Error saving theme", e); }
+            }
+        }
+    };
+
     const currentTheme = Object.values(THEMES).find(t => t.id === currentThemeId) || THEMES.CYBERPUNK;
 
     useEffect(() => {
-        localStorage.setItem('wiresense_theme', currentThemeId);
-
         // Inject CSS Variables for BASE layout
         const root = document.documentElement;
         const colors = currentTheme.colors;
@@ -262,7 +369,7 @@ export const ThemeProvider = ({ children }) => {
 
     const value = {
         currentThemeId,
-        setTheme: setCurrentThemeId,
+        setTheme,
         theme: currentTheme,
         availableThemes: Object.values(THEMES)
     };

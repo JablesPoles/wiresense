@@ -35,27 +35,32 @@ export default defineConfig({
         background_color: "#111827", // Cor de fundo da splash screen
         display: "standalone", // Faz o PWA abrir como app independente
         scope: "/", // Escopo do PWA
-        start_url: "/wiresense", // URL inicial quando aberto como PWA
+        start_url: "/", // URL inicial quando aberto como PWA
         id: "/", // ID do PWA
         icons: [
           {
-            src: "/icon-192x192.png", // Ícone menor
+            src: "/icon-192x192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any maskable"
           },
           {
-            src: "icon-512x512.png", // Ícone maior
+            src: "/icon-512x512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any maskable"
           },
         ],
+      },
+      devOptions: {
+        enabled: true,
       },
     }),
   ],
 
   // Configurações de build
   build: {
-    sourcemap:true, // Gera source maps para debugging
+    sourcemap: true, // Gera source maps para debugging
   },
 
   // Configuração do servidor de desenvolvimento

@@ -1,12 +1,13 @@
 import { useDevice } from '../contexts/DeviceContext';
 import React, { useState, useEffect } from 'react';
 import { useSettings, useDeviceSettings } from '../contexts/SettingsContext';
-import { motion } from 'framer-motion';
-import { DollarSign, Globe, Zap, Bell, Save } from 'lucide-react';
+import { DollarSign, Globe, Zap, Bell, Save, Settings, FileText, Palette } from 'lucide-react';
 import { VoltageSelector } from '../components/layout/VoltageSelector';
 import { Switch } from '../components/ui/switch';
 import { ThemeSelector } from '../components/settings/ThemeSelector';
-import { Palette } from 'lucide-react';
+import { useAchievements } from '../contexts/AchievementsContext'; // Wire Gamification
+import { useLanguage } from '../contexts/LanguageContext';
+import { PageTransition } from '../components/layout/PageTransition';
 
 const SettingsSection = ({ title, icon: Icon, children, isSolar }) => (
     <div className={`bg-card border rounded-xl p-6 shadow-sm ${isSolar ? 'border-amber-500/20' : 'border-border'}`}>
@@ -40,10 +41,11 @@ const SettingsPageContent = () => {
     const currentDeviceName = devices?.find(d => d.id === currentDeviceId)?.name || currentDeviceId;
 
     const isSolar = isGenerator;
+    const { t } = useLanguage();
 
-    // Global Settings
     const {
-        updateSetting, // Still used for notifications? No, notifications are separate.
+        tipoFase, // Add this
+        updateSetting,
         notifications,
         updateNotificationSetting
     } = useSettings();
@@ -64,6 +66,8 @@ const SettingsPageContent = () => {
         setPeakStartHour // Setter
     } = useDeviceSettings(currentDeviceId);
 
+    const { incrementStat } = useAchievements(); // Gamification Hook
+
     const [localVoltage, setLocalVoltage] = useState(deviceVoltage);
     const [localTarifa, setLocalTarifa] = useState(deviceTariff);
     const [localBudget, setLocalBudget] = useState(deviceBudget);
@@ -79,16 +83,21 @@ const SettingsPageContent = () => {
 
     const handleBudgetBlur = () => {
         setDeviceBudget(Number(localBudget));
+        incrementStat('settingsChanged');
     };
 
     const handleTarifaBlur = () => {
         setDeviceTariff(localTarifa);
+        incrementStat('settingsChanged');
     };
 
     const handleVoltageChange = (val) => {
         setLocalVoltage(val);
         setDeviceVoltage(val);
+        incrementStat('settingsChanged');
     };
+
+
 
     const moedas = {
         'BRL': 'Real (R$)',
@@ -100,47 +109,64 @@ const SettingsPageContent = () => {
     const selectClass = `w-full bg-background border border-border rounded-lg py-2 pl-10 pr-4 text-foreground appearance-none focus:ring-2 ${isSolar ? 'focus:ring-emerald-500' : 'focus:ring-primary'} focus:border-transparent outline-none transition-all`;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <PageTransition className="space-y-6">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-                    Configurações
-                    <span className="text-muted-foreground font-normal text-xl mx-2">/</span>
-                    <span className="text-2xl text-primary">{currentDeviceName}</span>
-                    <span className={`text-sm ml-auto px-2 py-0.5 rounded-full border ${isSolar ? 'bg-emerald-500/10 border-amber-500/20 text-amber-500' : 'bg-cyan-500/10 border-violet-500/20 text-cyan-500'}`}>
-                        {isSolar ? 'Gerador' : 'Consumidor'}
+                <h1 className="text-3xl font-bold tracking-tight text-white flex flex-wrap items-center gap-3">
+                    <span className="opacity-50 font-normal">{t('settings')}</span>
+                    <span className="text-muted-foreground font-normal text-xl">/</span>
+                    <span className="text-primary truncate max-w-[180px] sm:max-w-md md:max-w-none" title={currentDeviceName}>{currentDeviceName}</span>
+                    <span className={`text-xs px-3 py-1 rounded-full border font-medium inline-flex items-center justify-center backdrop-blur-md transition-colors ${isGenerator ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-blue-500/20 text-blue-500 border border-blue-500/30'}`}>
+                        {isGenerator ? t('generator') : t('consumer')}
                     </span>
                 </h1>
-                <p className="text-muted-foreground">Personalize sua experiência no Wiresense.</p>
+                <p className="text-muted-foreground mt-2">
+                    {t('settings_desc')}
+                </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Electricity Settings */}
-                <SettingsSection title="Eletricidade" icon={Zap} isSolar={isSolar}>
+                <SettingsSection title={t('electricity')} icon={Zap} isSolar={isGenerator}>
                     <div className="space-y-4">
-                        <label className="block text-sm font-medium text-muted-foreground">
-                            Tensão da Rede (Voltagem)
-                        </label>
+
                         <VoltageSelector
                             selectedVoltage={localVoltage}
                             onVoltageChange={handleVoltageChange}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Selecione a voltagem padrão da sua residência para cálculos corretos de potência.
+                            {t('voltage_desc')}
                         </p>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-muted-foreground block mb-2">{t('phase_type')} <span className="text-xs opacity-50 font-normal">({t('informative_only')})</span></label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {['single_phase', 'two_phase', 'three_phase'].map((faseKey) => (
+                                <button
+                                    key={faseKey}
+                                    onClick={() => updateSetting('tipoFase', t(faseKey))}
+                                    className={`px-3 py-2 rounded-md text-sm transition-all ${tipoFase === t(faseKey)
+                                        ? (isGenerator ? 'bg-amber-500 text-black font-medium shadow-md' : 'bg-primary text-primary-foreground font-medium shadow-md')
+                                        : 'hover:bg-muted text-muted-foreground'
+                                        }`}
+                                >
+                                    {t(faseKey)}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </SettingsSection>
 
                 {/* Costs & Currency */}
-                <SettingsSection title="Custos e Moeda" icon={DollarSign} isSolar={isSolar}>
+                <SettingsSection title={t('costs_currency')} icon={DollarSign} isSolar={isSolar}>
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="tarifa-kwh" className="block text-sm font-medium text-muted-foreground mb-2">
-                                Tarifa por kWh
-                            </label>
+                            <div className="space-y-0.5">
+                                <label className="text-sm font-medium text-white">{t('base_cost_kwh')}</label>
+                                <p className="text-xs text-muted-foreground">{t('conventional_tariff_cost_desc')}</p>
+                            </div>
                             <div className="relative">
-                                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                                <span className="absolute left-3 top-2.5 text-muted-foreground">{currencySymbol}</span>
                                 <input
-                                    id="tarifa-kwh"
                                     type="number"
                                     step="0.01"
                                     value={localTarifa}
@@ -153,12 +179,12 @@ const SettingsPageContent = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-2">Moeda de Exibição</label>
+                            <label className="block text-sm font-medium text-muted-foreground mb-2">{t('display_currency')}</label>
                             <div className="relative">
                                 <Globe className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
                                 <select
                                     value={deviceMoeda}
-                                    onChange={(e) => setDeviceMoeda(e.target.value)}
+                                    onChange={(e) => { setDeviceMoeda(e.target.value); incrementStat('settingsChanged'); }}
                                     className={selectClass}
                                 >
                                     {Object.entries(moedas).map(([code, name]) => (
@@ -168,10 +194,10 @@ const SettingsPageContent = () => {
                             </div>
                         </div>
 
-                        {/* Orçamento / Budget */}
+                        {/* Budget Goal */}
                         <div>
                             <label className="block text-sm font-medium text-muted-foreground mb-2">
-                                Meta de Orçamento Mensal <span className="text-xs opacity-70">(0 para desativar)</span>
+                                {t('monthly_budget_goal')} <span className="text-xs opacity-70">({t('zero_to_disable')})</span>
                             </label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
@@ -191,31 +217,31 @@ const SettingsPageContent = () => {
                     </div>
                 </SettingsSection>
 
-                {/* Modelo Tarifário */}
-                <SettingsSection title="Modelo Tarifário" icon={DollarSign} isSolar={isSolar}>
+                {/* Tariff Model */}
+                <SettingsSection title={t('tariff_model')} icon={FileText} isSolar={isGenerator}>
                     <div className="space-y-6">
                         {/* Mode Selection */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div
                                 className={`cursor-pointer border rounded-lg p-4 transition-all ${deviceTariffMode !== 'white' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-muted/50 border-border hover:bg-muted'}`}
-                                onClick={() => setTariffMode('conventional')}
+                                onClick={() => { setTariffMode('conventional'); incrementStat('settingsChanged'); }}
                             >
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="font-semibold text-white">Convencional</span>
+                                    <span className="font-semibold text-white">{t('conventional')}</span>
                                     {deviceTariffMode !== 'white' && <div className="w-3 h-3 rounded-full bg-primary" />}
                                 </div>
-                                <p className="text-sm text-muted-foreground">Valor único para kWh em qualquer horário.</p>
+                                <p className="text-sm text-muted-foreground">{t('conventional_desc')}</p>
                             </div>
 
                             <div
                                 className={`cursor-pointer border rounded-lg p-4 transition-all ${deviceTariffMode === 'white' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-muted/50 border-border hover:bg-muted'}`}
-                                onClick={() => setTariffMode('white')}
+                                onClick={() => { setTariffMode('white'); incrementStat('settingsChanged'); }}
                             >
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="font-semibold text-white">Tarifa Branca</span>
+                                    <span className="font-semibold text-white">{t('white_tariff')}</span>
                                     {deviceTariffMode === 'white' && <div className="w-3 h-3 rounded-full bg-primary" />}
                                 </div>
-                                <p className="text-sm text-muted-foreground">Preços variam: Ponta (Caro), Intermediário e Fora de Ponta (Barato).</p>
+                                <p className="text-sm text-muted-foreground">{t('white_tariff_desc')}</p>
                             </div>
                         </div>
 
@@ -223,15 +249,15 @@ const SettingsPageContent = () => {
                         {deviceTariffMode === 'white' && (
                             <div className="animate-in fade-in slide-in-from-top-4 duration-300 bg-muted/30 rounded-lg p-4 border border-border">
                                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Horário de Início da Ponta (Vermelha)
+                                    {t('peak_start_hour')}
                                 </label>
                                 <p className="text-xs text-muted-foreground mb-4">
-                                    Consulte sua conta de luz. Geralmente começa às 18h ou 19h.
+                                    {t('peak_start_hour_desc')}
                                 </p>
                                 <select
                                     className="w-full bg-black/20 border border-white/10 rounded-md p-2 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                     value={devicePeakStart || 18}
-                                    onChange={(e) => setPeakStartHour(parseInt(e.target.value))}
+                                    onChange={(e) => { setPeakStartHour(parseInt(e.target.value)); incrementStat('settingsChanged'); }}
                                 >
                                     {Array.from({ length: 24 }).map((_, i) => (
                                         <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
@@ -239,11 +265,15 @@ const SettingsPageContent = () => {
                                 </select>
 
                                 <div className="mt-4 text-xs text-muted-foreground bg-black/20 p-3 rounded border border-white/5">
-                                    <p><strong>Configuração atual:</strong></p>
+                                    <p><strong>{t('current_config')}:</strong></p>
                                     <ul className="list-disc list-inside mt-1 space-y-0.5">
-                                        <li>Ponta (Vermelha): {devicePeakStart || 18}h - {(devicePeakStart || 18) + 3}h</li>
-                                        <li>Intermediária (Amarela): {((devicePeakStart || 18) - 1)}h-{(devicePeakStart || 18)}h e {(devicePeakStart || 18) + 3}h-{(devicePeakStart || 18) + 4}h</li>
-                                        <li>Fora de Ponta (Verde): Restante + Finais de Semana</li>
+                                        <li>
+                                            {t('peak_time_label')}: {((devicePeakStart || 18) + 24) % 24}h - {((devicePeakStart || 18) + 3 + 24) % 24}h
+                                        </li>
+                                        <li>
+                                            {t('intermediate_time_label')}: {((devicePeakStart || 18) - 1 + 24) % 24}h - {((devicePeakStart || 18) + 24) % 24}h {t('and')} {((devicePeakStart || 18) + 3 + 24) % 24}h - {((devicePeakStart || 18) + 4 + 24) % 24}h
+                                        </li>
+                                        <li>{t('off_peak_time_label')}: {t('remaining_hours_weekends')}</li>
                                     </ul>
                                 </div>
                             </div>
@@ -251,7 +281,7 @@ const SettingsPageContent = () => {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Custo Base do kWh ({deviceMoeda})
+                                {t('base_cost_kwh', { currency: deviceMoeda })}
                             </label>
                             <input
                                 type="number"
@@ -263,59 +293,59 @@ const SettingsPageContent = () => {
                             />
                             <p className="text-xs text-muted-foreground mt-1">
                                 {deviceTariffMode === 'white'
-                                    ? "Este valor será usado como referência para a 'Ponta'. O sistema aplicará descontos automáticos para os outros horários na estimativa (Ponta = 100%, Inter = ~70%, Fora = ~40%)."
-                                    : "Valor único cobrado por kWh consumido."}
+                                    ? t('white_tariff_cost_desc')
+                                    : t('conventional_tariff_cost_desc')}
                             </p>
                         </div>
                     </div>
                 </SettingsSection>
 
                 {/* Appearance / Themes */}
-                <SettingsSection title="Aparência e Temas" icon={Palette} isSolar={isSolar}>
+                <SettingsSection title={t('appearance_themes')} icon={Palette} isSolar={isSolar}>
                     <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
-                            Personalize as cores e o estilo do painel.
+                            {t('customize_theme_desc')}
                         </p>
                         <ThemeSelector />
                     </div>
                 </SettingsSection>
 
                 {/* Alerts Configuration */}
-                <SettingsSection title="Alertas e Notificações" icon={Bell} isSolar={isSolar}>
+                <SettingsSection title={t('alerts_notifications')} icon={Bell} isSolar={isSolar}>
                     <div className="space-y-6">
                         {/* High Priority */}
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <label className="text-sm font-medium text-white">Alertas de Alta Prioridade</label>
-                                <p className="text-xs text-muted-foreground">Notificar sobre consumo excessivo (&gt;6kW) ou tempestades.</p>
+                                <label className="text-sm font-medium text-white">{t('high_priority_alerts')}</label>
+                                <p className="text-xs text-muted-foreground">{t('high_priority_alerts_desc')}</p>
                             </div>
                             <Switch
                                 checked={notifications?.highPriority ?? true}
-                                onCheckedChange={(val) => updateNotificationSetting('highPriority', val)}
+                                onCheckedChange={(val) => { updateNotificationSetting('highPriority', val); incrementStat('settingsChanged'); }}
                             />
                         </div>
 
                         {/* Weekly Report */}
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <label className="text-sm font-medium text-white">Relatório Semanal</label>
-                                <p className="text-xs text-muted-foreground">Receba um resumo de custos toda segunda-feira.</p>
+                                <label className="text-sm font-medium text-white">{t('weekly_report')}</label>
+                                <p className="text-xs text-muted-foreground">{t('weekly_report_desc')}</p>
                             </div>
                             <Switch
                                 checked={notifications?.weeklyReport ?? false}
-                                onCheckedChange={(val) => updateNotificationSetting('weeklyReport', val)}
+                                onCheckedChange={(val) => { updateNotificationSetting('weeklyReport', val); incrementStat('settingsChanged'); }}
                             />
                         </div>
 
                         {/* Educational Tips */}
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <label className="text-sm font-medium text-white">Dicas Educativas</label>
-                                <p className="text-xs text-muted-foreground">Exibir dicas de economia no Dashboard.</p>
+                                <label className="text-sm font-medium text-white">{t('educational_tips')}</label>
+                                <p className="text-xs text-muted-foreground">{t('educational_tips_desc')}</p>
                             </div>
                             <Switch
                                 checked={notifications?.educationalTips ?? true}
-                                onCheckedChange={(val) => updateNotificationSetting('educationalTips', val)}
+                                onCheckedChange={(val) => { updateNotificationSetting('educationalTips', val); incrementStat('settingsChanged'); }}
                             />
                         </div>
 
@@ -327,13 +357,13 @@ const SettingsPageContent = () => {
                                 }}
                                 className="text-sm text-primary hover:underline"
                             >
-                                Reiniciar Tutorial
+                                {t('restart_tutorial')}
                             </button>
                         </div>
                     </div>
                 </SettingsSection>
             </div >
-        </div >
+        </PageTransition>
     );
 };
 
