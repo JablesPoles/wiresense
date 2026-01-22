@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: wiresense-frontend:20260122-162712
+        image: wiresense-frontend:20260122-163014
         imagePullPolicy: Never
         ports:
         - containerPort: 80
