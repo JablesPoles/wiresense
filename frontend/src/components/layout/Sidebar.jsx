@@ -54,7 +54,7 @@ export const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
             "font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent truncate overflow-hidden transition-all duration-300",
             isCollapsed ? "text-2xl scale-110" : "text-xl"
           )}>
-            {isCollapsed ? "WS" : "Wiresense"}
+            {isCollapsed ? "WS" : "Wiresense v2"}
           </h1>
 
           {!isCollapsed && (
