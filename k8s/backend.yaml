@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wiresense-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wiresense-backend
+  template:
+    metadata:
+      labels:
+        app: wiresense-backend
+    spec:
+      containers:
+      - name: api
+        image: wiresense-backend:v2
+        imagePullPolicy: Never  
+        ports:
+        - containerPort: 8000
+        env:
+        - name: INFLUXDB_URL
+          value: "http://influxdb:8086"
+        - name: INFLUXDB_TOKEN
+          value: "meu-token-admin-super-secreto"
+        - name: INFLUXDB_ORG
+          value: "wiresense-org"
+        - name: INFLUXDB_BUCKET
+          value: "wiresense"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wiresense-backend-svc
+spec:
+  selector:
+    app: wiresense-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000

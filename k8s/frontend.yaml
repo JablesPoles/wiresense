@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wiresense-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wiresense-frontend
+  template:
+    metadata:
+      labels:
+        app: wiresense-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: wiresense-frontend:v1
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wiresense-frontend-svc
+spec:
+  selector:
+    app: wiresense-frontend
+  ports:
+    - protocol: TCP
+      port: 80 # Porta do Service
+      targetPort: 80 # Porta do Container (Nginx)

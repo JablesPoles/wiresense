@@ -82,6 +82,53 @@ const AnimatedRoutes = () => {
   );
 };
 
+// ... imports existing ...
+import { setApiMode, getApiMode } from './services/apiService';
+
+// Simple Toggle Component
+const ModeToggle = () => {
+  const isReal = getApiMode() === 'real';
+  const toggle = () => setApiMode(isReal ? 'mock' : 'real');
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      zIndex: 9999,
+      background: 'rgba(17, 24, 39, 0.9)',
+      padding: '10px 15px',
+      borderRadius: '8px',
+      border: '1px solid #374151',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      color: 'white',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+    }}>
+      <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF' }}>DATA SOURCE:</span>
+      <button
+        onClick={toggle}
+        style={{
+          background: isReal ? '#10B981' : '#4B5563',
+          color: 'white',
+          border: 'none',
+          padding: '4px 12px',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontWeight: 'bold',
+          fontSize: '12px',
+          transition: 'all 0.2s'
+        }}
+      >
+        {isReal ? 'LIVE (Real)' : 'TEST (Mock)'}
+      </button>
+    </div>
+  );
+};
+
+// ... existing AppContent ...
+
 function AppContent() {
   const { showTutorial, setShowTutorial } = useTutorial();
   const { isLoading } = useSettings(); // Consume loading state
@@ -103,10 +150,14 @@ function AppContent() {
       <MainLayout>
         <AnimatedRoutes />
       </MainLayout>
+      <ModeToggle /> {/* Injected Toggle */}
       {showTutorial && <Tutorial onComplete={handleTutorialComplete} />}
     </BrowserRouter>
   );
 }
+
+// ... existing App ...
+
 
 function App() {
   return (

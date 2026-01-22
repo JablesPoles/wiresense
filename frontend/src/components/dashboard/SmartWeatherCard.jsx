@@ -111,10 +111,8 @@ export const SmartWeatherCard = ({
         };
     }, [currentTipIndex]);
 
-    // Safe access
     const currentTip = tips[currentTipIndex] || { message: t('analyzing_system'), icon: Zap, priority: 'info', color: "blue" };
 
-    // Duration for animation sync
     const animationDuration = (currentTip.priority === 'critical' || currentTip.priority === 'warning') ? 15 : 8;
 
     // Dynamic Gradient based on Tip Priority
