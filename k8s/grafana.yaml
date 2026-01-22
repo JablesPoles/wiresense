@@ -11,23 +11,25 @@ spec:
     targetRevision: 8.5.1
     helm:
       values: |
-        # 1. Senha fixa (pra você não ter que ficar caçando secret)
         adminPassword: "admin"
         
-        # 2. Conexão Automática com o InfluxDB (Provisioning)
         datasources:
           datasources.yaml:
             apiVersion: 1
             datasources:
             - name: InfluxDB
               type: influxdb
-              url: http://influxdb:8086
               access: proxy
-              database: wiresense
-              user: admin
-              jsonData:
-                httpMode: GET
+              url: http://influxdb:8086
               isDefault: true
+              # Aqui está a mudança para V2 (Flux)
+              jsonData:
+                version: Flux
+                organization: wiresense-org
+                defaultBucket: wiresense
+                tlsSkipVerify: true
+              secureJsonData:
+                token: "meu-token-admin-super-secreto"
   destination:
     server: https://kubernetes.default.svc
     namespace: default
