@@ -39,6 +39,10 @@ function start_lab() {
     kubectl apply -f k8s/
 
     # 3. Abre terminais auxiliares (macOS)
+    
+    echo "🐙 Abrindo ArgoCD (Port 8081)..."
+    osascript -e 'tell application "Terminal" to do script "kubectl port-forward svc/argocd-server -n argocd 8081:443"'
+
     echo "🌐 Abrindo Frontend (Port 3000)..."
     osascript -e 'tell application "Terminal" to do script "kubectl port-forward svc/wiresense-frontend-svc 3000:80"'
 
@@ -48,7 +52,9 @@ function start_lab() {
     echo "🚇 Iniciando Cloudflare Tunnel..."
     osascript -e 'tell application "Terminal" to do script "cloudflared tunnel --url http://localhost:8000"'
 
-    echo "✅ Tudo online! Acesse http://localhost:3000"
+    echo "✅ Tudo online!"
+    echo "   - Frontend: http://localhost:3000"
+    echo "   - ArgoCD:   https://localhost:8081"
 }
 
 function stop_lab() {
@@ -80,7 +86,8 @@ function check_status() {
     if docker ps | grep -q "${CLUSTER_NAME}-control-plane"; then
         echo ""
         echo "--- Kubernetes Pods ---"
-        kubectl get pods
+        kubectl get pods -A | grep -v "kube-system" 
+        # (Usei -A e grep -v para mostrar Default e ArgoCD, escondendo os pods do sistema)
     else
         echo ""
         echo "⚠️  O Kubernetes está desligado/pausado."
