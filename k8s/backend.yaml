@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: wiresense-backend:v2
+        image: wiresense-backend:20260122-162712
         imagePullPolicy: Never  
         ports:
         - containerPort: 8000
