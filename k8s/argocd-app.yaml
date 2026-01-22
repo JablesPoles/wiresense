@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: 'https://github.com/JablesPoles/wiresense.git' 
-    targetRevision: HEAD
+    targetRevision: wiresense-ops
     path: k8s 
   destination:
     server: 'https://kubernetes.default.svc'
