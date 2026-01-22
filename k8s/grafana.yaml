@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: wiresense-grafana
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: grafana
+    targetRevision: 8.5.1
+    helm:
+      values: |
+        # 1. Senha fixa (pra você não ter que ficar caçando secret)
+        adminPassword: "admin"
+        
+        # 2. Conexão Automática com o InfluxDB (Provisioning)
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+            - name: InfluxDB
+              type: influxdb
+              url: http://influxdb:8086
+              access: proxy
+              database: wiresense
+              user: admin
+              jsonData:
+                httpMode: GET
+              isDefault: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
